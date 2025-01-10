@@ -1,9 +1,4 @@
-# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
-#
-# SPDX-License-Identifier: Apache-2.0
-
 import os
-
 import setuptools
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -18,15 +13,15 @@ with open(os.path.join(here, "autogen/version.py")) as fp:
 __version__ = version["__version__"]
 
 setuptools.setup(
-    name="ag2",
+    name="seed-autogen",
     version=__version__,
     description="Alias package for pyautogen",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=["pyautogen==" + __version__],
-    url="https://github.com/ag2ai/ag2",
-    author="Chi Wang & Qingyun Wu",
-    author_email="support@ag2.ai",
+    install_requires=["seed_pyautogen==" + __version__],
+    url="https://github.com/Seedtech-Club/ag2",
+    author="SeedTech",
+    author_email="kev1nzh37@gmail.com",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
@@ -34,4 +29,5 @@ setuptools.setup(
     ],
     license="Apache Software License 2.0",
     python_requires=">=3.8,<3.14",
+    packages=setuptools.find_packages(include=["autogen", "autogen.*"]),
 )

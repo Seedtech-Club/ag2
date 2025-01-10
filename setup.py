@@ -118,14 +118,14 @@ extra_require = {
 }
 
 setuptools.setup(
-    name="pyautogen",
+    name="seed-pyautogen",
     version=__version__,
-    author="Chi Wang & Qingyun Wu",
-    author_email="support@ag2.ai",
+    url="https://github.com/Seedtech-Club/ag2",
+    author="SeedTech",
+    author_email="kev1nzh37@gmail.com",
     description="A programming framework for agentic AI",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/ag2ai/ag2",
     packages=setuptools.find_namespace_packages(
         include=[
             "autogen*",
