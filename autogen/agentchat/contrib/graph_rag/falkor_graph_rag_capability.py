@@ -1,7 +1,3 @@
-# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
-#
-# SPDX-License-Identifier: Apache-2.0
-
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from autogen import Agent, ConversableAgent, UserProxyAgent
@@ -10,39 +6,84 @@ from .falkor_graph_query_engine import FalkorGraphQueryEngine
 from .graph_query_engine import GraphStoreQueryResult
 from .graph_rag_capability import GraphRagCapability
 
-
 class FalkorGraphRagCapability(GraphRagCapability):
     """
-    The FalkorDB GraphRAG capability integrate FalkorDB with graphrag_sdk version: 0.1.3b0.
-    Ref: https://github.com/FalkorDB/GraphRAG-SDK/tree/2-move-away-from-sql-to-json-ontology-detection
-
-    For usage, please refer to example notebook/agentchat_graph_rag_falkordb.ipynb
+    The FalkorDB GraphRAG capability integrates FalkorDB with graphrag_sdk version: 0.1.3b0.
     """
 
     def __init__(self, query_engine: FalkorGraphQueryEngine):
         """
-        initialize GraphRAG capability with a graph query engine
+        Initialize GraphRAG capability with a graph query engine.
+        Args:
+            query_engine: An instance of FalkorGraphQueryEngine for querying the database.
         """
         self.query_engine = query_engine
 
-    def add_to_agent(self, agent: UserProxyAgent):
+    def add_to_agent(self, agent: ConversableAgent):
         """
-        Add FalkorDB GraphRAG capability to a UserProxyAgent.
-        The restriction to a UserProxyAgent to make sure the returned message does not contain information retrieved from the graph DB instead of any LLMs.
+        Adds FalkorDB GraphRAG capability to the given agent.
         """
-        self.graph_rag_agent = agent
 
-        # Validate the agent config
-        if agent.llm_config not in (None, False):
-            raise Exception(
-                "Agents with GraphRAG capabilities do not use an LLM configuration. Please set your llm_config to None or False."
-            )
+        # Ensure agents is a list, even if a single agent is passed
+        if not isinstance(agent, list):
+            agent = [agent]
 
-        # Register method to generate the reply using a FalkorDB query
-        # All other reply methods will be removed
-        agent.register_reply(
-            [ConversableAgent, None], self._reply_using_falkordb_query, position=0, remove_other_reply_funcs=True
-        )
+        for single_agent in agent:
+            try:
+                self.graph_rag_agent = single_agent
+
+                # Register a hook to process the last received message.
+                single_agent.register_hook(
+                    hookable_method="process_last_received_message",
+                    hook=self.process_last_received_message
+                )
+
+                # Ensure the agent has a valid system message.
+                if not single_agent.system_message:
+                    single_agent.update_system_message("You are now equipped with the ability to retrieve data from FalkorDB.")
+        
+            except Exception as e:
+                # Catch errors and skip this agent.
+                continue  # Skip this agent and move to the next one
+
+    def process_last_received_message(self, text: Union[Dict, str]):
+        """
+        Integrates FalkorDB query results into the agent's response process.
+        Queries FalkorDB based on the received message and appends relevant data.
+    
+        Args:
+            text: The incoming message to process.
+        Returns:
+            The modified message with FalkorDB results appended.
+        """
+        try:
+            # Retrieve the question from the message context.
+            if isinstance(text, str):
+                question = text
+            elif isinstance(text, dict) and "content" in text:
+                question = text["content"]
+            else:
+                raise ValueError("Invalid message format. Must be a string or a dict with 'content' key.")
+
+            # Query FalkorDB using the extracted question.
+            result: GraphStoreQueryResult = self.query_engine.query(question)
+
+            # Append the FalkorDB result to the message.
+            falkor_response = result.answer if result.answer else "No relevant data found in FalkorDB."
+            if isinstance(text, str):
+                return f"{text}\n\nFalkorDB Reference: {falkor_response}"
+            else:
+                text["content"] += f"\n\nFalkorDB Reference: {falkor_response}"
+                return text
+
+        except Exception as e:
+            # Log the error and return the original text with an error message.
+            error_message = f"Error while retrieving data from FalkorDB: {e}"
+            if isinstance(text, str):
+                return f"{text}\n\n{error_message}"
+            else:
+                text["content"] += f"\n\n{error_message}"
+                return text
 
     def _reply_using_falkordb_query(
         self,

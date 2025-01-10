@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import warnings
+import pickle
 from hashlib import md5
 from pathlib import Path
 from string import Template
@@ -33,7 +34,6 @@ from .utils import _get_file_name_from_content, silence_pip
 __all__ = ("LocalCommandLineCodeExecutor",)
 
 A = ParamSpec("A")
-
 
 class LocalCommandLineCodeExecutor(CodeExecutor):
     SUPPORTED_LANGUAGES: ClassVar[List[str]] = [
@@ -157,7 +157,7 @@ $functions"""
         template = Template(prompt_template)
         return template.substitute(
             module_name=self._functions_module,
-            functions="\n\n".join([to_stub(func) for func in self._functions]),
+            functions="\n".join([to_stub(func) for func in self._functions]),
         )
 
     @property
@@ -259,6 +259,7 @@ $functions"""
     def _execute_code_dont_check_setup(self, code_blocks: List[CodeBlock]) -> CommandLineCodeResult:
         logs_all = ""
         file_names = []
+
         for code_block in code_blocks:
             lang, code = code_block.language, code_block.code
             lang = lang.lower()
@@ -275,8 +276,7 @@ $functions"""
             if lang not in self.SUPPORTED_LANGUAGES:
                 # In case the language is not supported, we return an error message.
                 exitcode = 1
-                logs_all += "\n" + f"unknown language {lang}"
-                break
+                logs_all += "\n" + f"Skipped the execution of code block with language of [{lang}]"
 
             execute_code = self.execution_policies.get(lang, False)
             try:
@@ -295,10 +295,53 @@ $functions"""
             file_names.append(written_file)
 
             if not execute_code:
-                # Just return a message that the file is saved.
-                logs_all += f"Code saved to {str(written_file)}\n"
                 exitcode = 0
                 continue
+
+            if lang == "python":
+                # Inject shared context into the script
+                context_injection = f"""
+import pickle
+import os
+import types
+import io
+
+__shared_context_file = 'seed_agent_shared_values.pkl'
+
+# Check if the shared context file exists
+if os.path.exists(__shared_context_file):
+    # Load the shared context and inject it dynamically
+    with open(__shared_context_file, 'rb') as f:
+        __shared_context = pickle.load(f)
+    
+    # Dynamically inject all keys and values from the shared context into globals
+    globals().update(__shared_context)
+else:
+    pass
+"""
+
+                # Add code to save the updated context after execution
+                save_context_code = f"""
+# Ensure you're in the global scope where globals() works as expected
+def save_globals():
+    # Filter out globals that are not system or internal variables (those starting with '__')
+    _serializable_globals = {{key: value for key, value in globals().items() if not key.startswith('__')}}
+
+    # Filter out non-pickleable types (like modules, functions, etc.)
+    _serializable_globals = {{key: value for key, value in _serializable_globals.items() if not isinstance(value, (types.FunctionType, types.BuiltinFunctionType, types.ModuleType, io.IOBase))}}
+
+    # Save the serializable globals using pickle
+    with open(__shared_context_file, 'wb') as _file:
+        pickle.dump(_serializable_globals, _file)
+
+# Call the function
+save_globals()
+"""
+
+                code = context_injection+ "\n" + code+ "\n" + save_context_code
+
+                with written_file.open("w", encoding="utf-8") as f:
+                    f.write(code)
 
             program = _cmd(lang)
             cmd = [program, str(written_file.absolute())]
@@ -318,7 +361,7 @@ $functions"""
                     cwd=self._work_dir,
                     capture_output=True,
                     text=True,
-                    timeout=float(self._timeout),
+                    timeout=600,
                     env=env,
                     encoding="utf-8",
                 )

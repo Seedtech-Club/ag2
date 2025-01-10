@@ -18,6 +18,7 @@ import requests
 from termcolor import colored
 
 import autogen
+from ...io.base import IOStream
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,10 @@ class AgentBuilder:
     AgentBuilder can help user build an automatic task solving process powered by multi-agent system.
     Specifically, our building pipeline includes initialize and build.
     """
-
+    
     online_server_name = "online"
 
-    DEFAULT_PROXY_AUTO_REPLY = 'There is no code from the last 1 message for me to execute. Group chat manager should let other participants to continue the conversation. If the group chat manager want to end the conversation, you should let other participant reply me only with "TERMINATE"'
+    DEFAULT_PROXY_AUTO_REPLY = 'There is no code from the last one message for me to execute.'
 
     GROUP_CHAT_DESCRIPTION = """ # Group chat instruction
 You are now working in a group chat with different expert and a group chat manager.
@@ -89,12 +90,13 @@ When the task is complete and the result has been carefully verified, after obta
 - Write test cases according to the general task.
 
 ## How to use code?
-- Suggest python code (in a python coding block) or shell script (in a sh coding block) for the Computer_terminal to execute.
+- When suggesting code, you must indicate the script type in the code block, either ```python...``` or ```sh...```.
 - If missing python packages, you can install the package by suggesting a `pip install` code in the ```sh ... ``` block.
-- When using code, you must indicate the script type in the coding block.
-- Do not the coding block which requires users to modify.
-- Do not suggest a coding block if it's not intended to be executed by the Computer_terminal.
-- The Computer_terminal cannot modify your code.
+- Use existing function tools first. Only write custom functions if none are available.
+- **When calling a function tool within a code block, you must include 'from functions import selected_tool', replacing selected_tool with the tool you want to use**.
+- **Ensure each code block includes all necessary imports and functions**.
+- Always use plt.savefig() instead of plt.show() to save your graphs.
+- Do not execute code blocks yourself. Only suggest code block that’s meant to be executed by Computer_terminal.
 - **Use 'print' function for the output when relevant**.
 - Check the execution result returned by the Computer_terminal.
 - Do not ask Computer_terminal to copy and paste the result.
@@ -324,7 +326,7 @@ Match roles in the role set to each expert in expert set.
             if system_message == "":
                 system_message = agent.system_message
             else:
-                system_message = f"{system_message}\n\n{self.CODING_AND_TASK_SKILL_INSTRUCTION}"
+                system_message = f"{system_message}\n{self.CODING_AND_TASK_SKILL_INSTRUCTION}"
 
             enhanced_sys_msg = self.GROUP_CHAT_DESCRIPTION.format(
                 name=agent_name, members=member_name, user_proxy_desc=user_proxy_desc, sys_msg=system_message
@@ -389,6 +391,7 @@ Match roles in the role set to each expert in expert set.
             agent_list: a list of agents.
             cached_configs: cached configs.
         """
+        iostream = IOStream.get_default()
         if code_execution_config is None:
             code_execution_config = {
                 "last_n_messages": 1,
@@ -403,7 +406,7 @@ Match roles in the role set to each expert in expert set.
         agent_configs = []
         self.building_task = building_task
 
-        print(colored("==> Generating agents...", "green"), flush=True)
+        iostream.print(colored("==> Generating agents...", "green"), flush=True)
         resp_agent_name = (
             self.builder_model.create(
                 messages=[
@@ -417,12 +420,10 @@ Match roles in the role set to each expert in expert set.
             .message.content
         )
         agent_name_list = [agent_name.strip().replace(" ", "_") for agent_name in resp_agent_name.split(",")]
-        print(f"{agent_name_list} are generated.", flush=True)
+        iostream.print(f"{agent_name_list} are generated.", flush=True)
 
-        print(colored("==> Generating system message...", "green"), flush=True)
         agent_sys_msg_list = []
         for name in agent_name_list:
-            print(f"Preparing system message for {name}", flush=True)
             resp_agent_sys_msg = (
                 self.builder_model.create(
                     messages=[
@@ -441,10 +442,8 @@ Match roles in the role set to each expert in expert set.
             )
             agent_sys_msg_list.append(resp_agent_sys_msg)
 
-        print(colored("==> Generating description...", "green"), flush=True)
         agent_description_list = []
         for name, sys_msg in list(zip(agent_name_list, agent_sys_msg_list)):
-            print(f"Preparing description for {name}", flush=True)
             resp_agent_description = (
                 self.builder_model.create(
                     messages=[
@@ -497,11 +496,10 @@ Match roles in the role set to each expert in expert set.
         building_task: str,
         library_path_or_json: str,
         default_llm_config: Dict,
-        top_k: int = 3,
+        top_k: int = 5,
         coding: Optional[bool] = None,
         code_execution_config: Optional[Dict] = None,
         use_oai_assistant: Optional[bool] = False,
-        embedding_model: Optional[str] = "all-mpnet-base-v2",
         user_proxy: Optional[autogen.ConversableAgent] = None,
         **kwargs,
     ) -> Tuple[List[autogen.ConversableAgent], Dict]:
@@ -517,29 +515,18 @@ Match roles in the role set to each expert in expert set.
             coding: use to identify if the user proxy (a code interpreter) should be added.
             code_execution_config: specific configs for user proxy (e.g., last_n_messages, work_dir, ...).
             use_oai_assistant: use OpenAI assistant api instead of self-constructed agent.
-            embedding_model: a Sentence-Transformers model use for embedding similarity to select agents from library.
-                As reference, chromadb use "all-mpnet-base-v2" as default.
             user_proxy: user proxy's class that can be used to replace the default user proxy.
 
         Returns:
             agent_list: a list of agents.
             cached_configs: cached configs.
         """
-        import sqlite3
 
-        # Some system will have an unexcepted sqlite3 version.
-        # Check if the user has installed pysqlite3.
-        if int(sqlite3.version.split(".")[0]) < 3:
-            try:
-                __import__("pysqlite3")
-                import sys
-
-                sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
-            except Exception as e:
-                raise e
         import chromadb
-        from chromadb.utils import embedding_functions
+        from .chroma_config import settings
 
+        iostream = IOStream.get_default()
+        iostream.print(colored("==> Looking for suitable agents in the library...", "green"), flush=True)
         if code_execution_config is None:
             code_execution_config = {
                 "last_n_messages": 1,
@@ -556,16 +543,14 @@ Match roles in the role set to each expert in expert set.
         except Exception as e:
             raise e
 
-        print(colored("==> Looking for suitable agents in the library...", "green"), flush=True)
         skills = building_task.replace(":", " ").split("\n")
         # skills = [line.split("-", 1)[1].strip() if line.startswith("-") else line for line in lines]
         if len(skills) == 0:
             skills = [building_task]
 
-        chroma_client = chromadb.Client()
+        chroma_client = chromadb.Client(settings)
         collection = chroma_client.create_collection(
-            name="agent_list",
-            embedding_function=embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model),
+            name="agent_list"
         )
         collection.add(
             documents=[agent["description"] for agent in agent_library],
@@ -573,9 +558,17 @@ Match roles in the role set to each expert in expert set.
             ids=[f"agent_{i}" for i in range(len(agent_library))],
         )
         agent_desc_list = set()
+
+        top_k = min(top_k, len(agent_library))
+        
         for skill in skills:
-            recall = set(collection.query(query_texts=[skill], n_results=top_k)["documents"][0])
-            agent_desc_list = agent_desc_list.union(recall)
+            query_result = collection.query(query_texts=[skill], n_results=top_k)
+            documents = query_result["documents"][0]
+            distances = query_result["distances"][0]
+
+            for doc, dist in zip(documents, distances):
+                if dist < 1.2:
+                    agent_desc_list.add(doc)
 
         agent_config_list = []
         for description in list(agent_desc_list):
@@ -616,12 +609,14 @@ Match roles in the role set to each expert in expert set.
         for skill, agent_profile in skill_agent_pair.items():
             # If no suitable agent, generate an agent
             if agent_profile == "None":
+                iostream.print(f"No agent found for task: {skill}")
+
                 _, agent_config_temp = self.build(
                     building_task=skill,
                     default_llm_config=default_llm_config.copy(),
                     coding=False,
                     use_oai_assistant=use_oai_assistant,
-                    max_agents=1,
+                    max_agents=3,
                 )
                 self.clear_agent(agent_config_temp["agent_configs"][0]["name"])
                 recalled_agent_config_list.append(agent_config_temp["agent_configs"][0])
@@ -635,8 +630,7 @@ Match roles in the role set to each expert in expert set.
                 for agent in agent_config_list:
                     if name == agent["name"] and desc == agent["description"]:
                         recalled_agent_config_list.append(agent.copy())
-
-        print(f"{[agent['name'] for agent in recalled_agent_config_list]} are selected.", flush=True)
+                        iostream.print(f"{agent['name']} is selected from Library")
 
         if coding is None:
             resp = (
@@ -675,14 +669,13 @@ Match roles in the role set to each expert in expert set.
             agent_list: a list of agents.
             cached_configs: cached configs.
         """
+        
         agent_configs = self.cached_configs["agent_configs"]
         default_llm_config = self.cached_configs["default_llm_config"]
         coding = self.cached_configs["coding"]
         code_execution_config = self.cached_configs["code_execution_config"]
 
-        print(colored("==> Creating agents...", "green"), flush=True)
         for config in agent_configs:
-            print(f"Creating agent {config['name']}...", flush=True)
             self._create_agent(
                 agent_config=config.copy(),
                 member_name=[agent["name"] for agent in agent_configs],
@@ -693,7 +686,6 @@ Match roles in the role set to each expert in expert set.
         agent_list = [agent_config[0] for agent_config in self.agent_procs_assign.values()]
 
         if coding is True:
-            print("Adding user console proxy...", flush=True)
             if user_proxy is None:
                 user_proxy = autogen.UserProxyAgent(
                     name="Computer_terminal",
@@ -746,7 +738,6 @@ Match roles in the role set to each expert in expert set.
         """
         # load json string.
         if config_json is not None:
-            print(colored("Loading config from JSON...", "green"), flush=True)
             cached_configs = json.loads(config_json)
 
         # load from path.

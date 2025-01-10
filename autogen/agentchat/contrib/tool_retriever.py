@@ -1,19 +1,17 @@
-# Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-# Portions derived from https://github.com/microsoft/autogen are under the MIT License.
-# SPDX-License-Identifier: MIT
 import importlib.util
 import inspect
 import os
-from textwrap import dedent, indent
 
 import pandas as pd
-from sentence_transformers import SentenceTransformer, util
+from textwrap import dedent, indent
+
+import chromadb
+from .chroma_config import settings
 
 from autogen import AssistantAgent, UserProxyAgent
 from autogen.coding import LocalCommandLineCodeExecutor
+
+from ...io.base import IOStream
 
 
 class ToolBuilder:
@@ -23,35 +21,94 @@ For example, if there is a function called `foo` you could import it by writing 
 {functions}
 """
 
-    def __init__(self, corpus_path, retriever="all-mpnet-base-v2"):
-
+    def __init__(self, corpus_path: str, retriever=None):
+        # Load the corpus (assumes tab-separated values file)
         self.df = pd.read_csv(corpus_path, sep="\t")
+        
+        # Clean the data: Remove any rows with NaN values in the 'document_content' column
+        self.df = self.df.dropna(subset=["document_content"])
+        
+        # Ensure all documents are strings (if any document is not a string, convert it)
+        self.df["document_content"] = self.df["document_content"].astype(str)
+
         document_list = self.df["document_content"].tolist()
 
-        self.model = SentenceTransformer(retriever)
-        self.embeddings = self.model.encode(document_list)
+        # Initialize ChromaDB client (non-persistent setup)
+        self.db_client = chromadb.Client(settings)
+        
+        # Create or get the 'tool_library' collection in the ChromaDB
+        self.vec_db = self.db_client.create_collection("tool_library", get_or_create=True)
 
-    def retrieve(self, query, top_k=3):
-        # Encode the query using the Sentence Transformer model
-        query_embedding = self.model.encode([query])
+        # Get the existing document IDs in the collection (to avoid duplication)
+        response = self.vec_db.get()  # Get collection details
 
-        hits = util.semantic_search(query_embedding, self.embeddings, top_k=top_k)
+        # Handle the structure of response["documents"]
+        if isinstance(response, dict) and "documents" in response:
+            existing_documents = response["documents"]
+            existing_ids = [str(i) for i in range(len(existing_documents))]  # Create dummy IDs based on the document list
+        else:
+            print("Unexpected response structure or no documents found.")
+            existing_ids = []
 
-        results = []
-        for hit in hits[0]:
-            results.append(self.df.iloc[hit["corpus_id"], 1])
-        return results
+        # Filter out documents that are already in the collection
+        new_documents = [
+            document_list[i] for i in range(len(document_list)) if str(i) not in existing_ids
+        ]
 
+        # Add the new documents to ChromaDB (as embeddings + metadata)
+        if new_documents:
+            self.vec_db.add(
+                documents=new_documents,
+                metadatas=[{"source": str(i)} for i in range(len(new_documents))],
+                ids=[str(i) for i in range(len(new_documents))]
+            )
+
+
+    def retrieve(self, query: str, top_k: int = 5):
+        
+        iostream = IOStream.get_default()
+
+        # Perform the query on the vector database
+        results = self.vec_db.query(query_texts=[query], n_results=top_k)
+
+        # Check if results['documents'] is a list of lists (as expected)
+        if isinstance(results['documents'], list) and isinstance(results['documents'][0], list):
+            documents = results['documents'][0]  # The first item is a list of documents
+            distances = results['distances'][0]  # Corresponding distances for the documents
+        else:
+            print("Error: Unexpected result format")
+            documents = []
+            distances = []
+        
+
+        filtered_documents = []
+        for document, distance in zip(documents, distances):
+            if distance < 1.2:
+                filtered_documents.append(document)
+        
+        # Print the filtered results
+        if filtered_documents:
+            for document in filtered_documents:
+                iostream.print(f"==> Suitable tool available for '{query}'")
+                iostream.print(document)
+            iostream.print("\n", "-" * 80, flush=True, sep="")
+        else:
+            pass
+
+        return filtered_documents
+    
+    
     def bind(self, agent: AssistantAgent, functions: str):
-        """Binds the function to the agent so that agent is aware of it."""
+        """Binds the function to the agent so that the agent is aware of it."""
         sys_message = agent.system_message
         sys_message += self.TOOL_USING_PROMPT.format(functions=functions)
         agent.update_system_message(sys_message)
         return
 
+
     def bind_user_proxy(self, agent: UserProxyAgent, tool_root: str):
         """
-        Updates user proxy agent with a executor so that code executor can successfully execute function-related code.
+        Updates user proxy agent with an executor so that code executor can successfully execute function-related code.
         Returns an updated user proxy.
         """
         # Find all the functions in the tool root

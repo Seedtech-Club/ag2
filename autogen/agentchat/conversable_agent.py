@@ -20,7 +20,7 @@ from openai import BadRequestError
 from autogen.agentchat.chat import _post_process_carryover_item
 from autogen.exception_utils import InvalidCarryOverType, SenderRequired
 
-from .._pydantic import BaseModel, model_dump
+from .._pydantic import model_dump
 from ..cache.cache import AbstractCache
 from ..code_utils import (
     PYTHON_VARIANTS,
@@ -136,10 +136,7 @@ class ConversableAgent(LLMAgent):
                 resume previous had conversations. Defaults to an empty chat history.
             silent (bool or None): (Experimental) whether to print the message sent. If None, will use the value of
                 silent in each function.
-            context_variables (dict or None): Context variables that provide a persistent context for the agent.
-                Note: Will maintain a reference to the passed in context variables (enabling a shared context)
-                Only used in Swarms at this stage:
-                https://ag2ai.github.io/ag2/docs/reference/agentchat/contrib/swarm_agent
+            context_variables (dict or None): Context variables that provide a persistent context for the agent. Only used in Swarms at this stage.
         """
         # we change code_execution_config below and we have to make sure we don't change the input
         # in case of UserProxyAgent, without this we could even change the default value {}
@@ -264,6 +261,7 @@ class ConversableAgent(LLMAgent):
             "process_last_received_message": [],
             "process_all_messages_before_reply": [],
             "process_message_before_send": [],
+            "update_agent_state": [],
         }
 
     def _validate_llm_config(self, llm_config):
@@ -527,49 +525,55 @@ class ConversableAgent(LLMAgent):
             ),
         )
 
-    def get_context(self, key: str, default: Any = None) -> Any:
+    @property
+    def system_message(self) -> str:
+        """Return the system message."""
+        return self._oai_system_message[0]["content"]
+
+    def get_context_value(self, key: str, default: Any = None) -> Any:
         """
         Get a context variable by key.
+
         Args:
             key: The key to look up
             default: Value to return if key doesn't exist
+
         Returns:
             The value associated with the key, or default if not found
         """
         return self._context_variables.get(key, default)
 
-    def set_context(self, key: str, value: Any) -> None:
+    def set_context_value(self, key: str, value: Any) -> None:
         """
         Set a context variable.
+
         Args:
             key: The key to set
             value: The value to associate with the key
         """
         self._context_variables[key] = value
 
-    def update_context(self, context_variables: Dict[str, Any]) -> None:
+    def set_context_values(self, context_variables: Dict[str, Any]) -> None:
         """
         Update multiple context variables at once.
+
         Args:
             context_variables: Dictionary of variables to update/add
         """
         self._context_variables.update(context_variables)
 
-    def pop_context(self, key: str, default: Any = None) -> Any:
+    def pop_context_key(self, key: str, default: Any = None) -> Any:
         """
         Remove and return a context variable.
+
         Args:
             key: The key to remove
             default: Value to return if key doesn't exist
+
         Returns:
             The value that was removed, or default if key not found
         """
         return self._context_variables.pop(key, default)
-
-    @property
-    def system_message(self) -> str:
-        """Return the system message."""
-        return self._oai_system_message[0]["content"]
 
     def update_system_message(self, system_message: str) -> None:
         """Update the system message.
@@ -890,15 +894,16 @@ class ConversableAgent(LLMAgent):
                 for tool_call in message["tool_calls"]:
                     id = tool_call.get("id", "No tool call id found")
                     function_call = dict(tool_call.get("function", {}))
-                    func_print = f"***** Suggested tool call ({id}): {function_call.get('name', '(No function name found)')} *****"
-                    iostream.print(colored(func_print, "green"), flush=True)
-                    iostream.print(
-                        "Arguments: \n",
-                        function_call.get("arguments", "(No arguments found)"),
-                        flush=True,
-                        sep="",
-                    )
-                    iostream.print(colored("*" * len(func_print), "green"), flush=True)
+                return  # skip
+                #     func_print = f"***** Suggested tool call ({id}): {function_call.get('name', '(No function name found)')} *****"
+                #     iostream.print(colored(func_print, "green"), flush=True)
+                #     iostream.print(
+                #         "Arguments: \n",
+                #         function_call.get("arguments", "(No arguments found)"),
+                #         flush=True,
+                #         sep="",
+                #     )
+                #     iostream.print(colored("*" * len(func_print), "green"), flush=True)
 
         iostream.print("\n", "-" * 80, flush=True, sep="")
 
@@ -1491,10 +1496,7 @@ class ConversableAgent(LLMAgent):
 
         # TODO: #1143 handle token limit exceeded error
         response = llm_client.create(
-            context=messages[-1].pop("context", None),
-            messages=all_messages,
-            cache=cache,
-            agent=self,
+            context=messages[-1].pop("context", None), messages=all_messages, cache=cache, agent=self
         )
         extracted_response = llm_client.extract_text_or_completion_object(response)[0]
 
@@ -1589,24 +1591,22 @@ class ConversableAgent(LLMAgent):
             if num_code_blocks == 1:
                 iostream.print(
                     colored(
-                        f"\n>>>>>>>> EXECUTING CODE BLOCK (inferred language is {code_blocks[0].language})...",
+                        f">>>>>>>> EXECUTING CODE BLOCK (inferred language is {code_blocks[0].language})...",
                         "red",
                     ),
                     flush=True,
                 )
             else:
-                iostream.print(
-                    colored(
-                        f"\n>>>>>>>> EXECUTING {num_code_blocks} CODE BLOCKS (inferred languages are [{', '.join([x.language for x in code_blocks])}])...",
-                        "red",
-                    ),
-                    flush=True,
-                )
+                for i, code_block in enumerate(code_blocks):
+                    iostream.print(
+                        colored(f">>>>>>>> EXECUTING CODE BLOCK {i + 1} (inferred language is {code_block.language})...", "red"),
+                        flush=True,
+                    )
 
             # found code blocks, execute code.
             code_result = self._code_executor.execute_code_blocks(code_blocks)
             exitcode2str = "execution succeeded" if code_result.exit_code == 0 else "execution failed"
-            return True, f"exitcode: {code_result.exit_code} ({exitcode2str})\nCode output: {code_result.output}"
+            return True, f"exitcode: {code_result.exit_code} ({exitcode2str})\nCode output: \n{code_result.output}"
 
         return False, None
 
@@ -1785,7 +1785,7 @@ class ConversableAgent(LLMAgent):
             return True, {
                 "role": "tool",
                 "tool_responses": tool_returns,
-                "content": "\n\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
+                "content": "\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
             }
         return False, None
 
@@ -1819,7 +1819,7 @@ class ConversableAgent(LLMAgent):
             return True, {
                 "role": "tool",
                 "tool_responses": tool_returns,
-                "content": "\n\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
+                "content": "\n".join([self._str_for_tool_response(tool_return) for tool_return in tool_returns]),
             }
 
         return False, None
@@ -2091,6 +2091,9 @@ class ConversableAgent(LLMAgent):
         if messages is None:
             messages = self._oai_messages[sender]
 
+        # Call the hookable method that gives registered hooks a chance to update agent state, used for their context variables.
+        self.process_update_agent_states(messages)
+
         # Call the hookable method that gives registered hooks a chance to process the last message.
         # Message modifications do not affect the incoming messages or self._oai_messages.
         messages = self.process_last_received_message(messages)
@@ -2160,6 +2163,9 @@ class ConversableAgent(LLMAgent):
 
         if messages is None:
             messages = self._oai_messages[sender]
+
+        # Call the hookable method that gives registered hooks a chance to update agent state, used for their context variables.
+        self.process_update_agent_states(messages)
 
         # Call the hookable method that gives registered hooks a chance to process all messages.
         # Message modifications do not affect the incoming messages or self._oai_messages.
@@ -2278,7 +2284,7 @@ class ConversableAgent(LLMAgent):
                 lang = infer_lang(code)
             iostream.print(
                 colored(
-                    f"\n>>>>>>>> EXECUTING CODE BLOCK {i} (inferred language is {lang})...",
+                    f">>>>>>>> EXECUTING CODE BLOCK {i} (inferred language is {lang})...",
                     "red",
                 ),
                 flush=True,
@@ -2375,7 +2381,7 @@ class ConversableAgent(LLMAgent):
             # Try to execute the function
             if arguments is not None:
                 iostream.print(
-                    colored(f"\n>>>>>>>> EXECUTING FUNCTION {func_name}...", "magenta"),
+                    colored(f">>>>>>>> PERFORMING OPERATION {func_name}...", "magenta"),
                     flush=True,
                 )
                 try:
@@ -2846,6 +2852,18 @@ class ConversableAgent(LLMAgent):
         hook_list = self.hook_lists[hookable_method]
         assert hook not in hook_list, f"{hook} is already registered as a hook."
         hook_list.append(hook)
+
+    def process_update_agent_states(self, messages: List[Dict]) -> None:
+        """
+        Calls any registered capability hooks to update the agent's state.
+        Primarily used to update context variables.
+        Will, potentially, modify the messages.
+        """
+        hook_list = self.hook_lists["update_agent_state"]
+
+        # Call each hook (in order of registration) to process the messages.
+        for hook in hook_list:
+            hook(self, messages)
 
     def process_all_messages_before_reply(self, messages: List[Dict]) -> List[Dict]:
         """

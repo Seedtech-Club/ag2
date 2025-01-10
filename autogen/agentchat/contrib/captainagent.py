@@ -5,14 +5,33 @@ import hashlib
 import json
 import os
 from typing import Callable, Dict, List, Literal, Optional, Union
+from termcolor import colored
 
 import autogen
 from autogen import UserProxyAgent
 from autogen.agentchat.conversable_agent import ConversableAgent
+from ...io.base import IOStream
 
 from .agent_builder import AgentBuilder
 from .tool_retriever import ToolBuilder, get_full_tool_description
 
+from autogen.agentchat.contrib.graph_rag.falkor_graph_query_engine import FalkorGraphQueryEngine
+from autogen.agentchat.contrib.graph_rag.falkor_graph_rag_capability import FalkorGraphRagCapability
+
+seed_config_setting = None
+graph_model_type = None
+
+with open("./settings/SEED_CONFIG_LIST.json") as f:
+    seed_config_setting = json.load(f)
+
+if seed_config_setting[0]["api_type"] == "azure":
+    os.environ["AZURE_OPENAI_API_KEY"] = seed_config_setting[0]["api_key"]
+    os.environ["AZURE_ENDPOINT"] = seed_config_setting[0]["base_url"]
+    os.environ["AZURE_API_VERSION"] = seed_config_setting[0]["api_version"]
+    graph_model_type = "azure"
+else:
+    os.environ["OPENAI_API_KEY"] = seed_config_setting[0]["api_key"]
+    graph_model_type = "openai"
 
 class CaptainAgent(ConversableAgent):
     """
@@ -35,7 +54,7 @@ class CaptainAgent(ConversableAgent):
             },
             "coding": True,
         },
-        "group_chat_config": {"max_round": 10},
+        "group_chat_config": {"max_round": 20},
         "group_chat_llm_config": None,
         "max_turns": 5,
     }
@@ -43,7 +62,7 @@ class CaptainAgent(ConversableAgent):
     AUTOBUILD_TOOL = {
         "type": "function",
         "function": {
-            "name": "seek_experts_help",
+            "name": "seek_experts",
             "description": """Build a group of experts and let them chat with each other in a group chat.""",
             "parameters": {
                 "type": "object",
@@ -69,13 +88,11 @@ You are a perfect manager of a group of advanced experts.
 When a task is assigned to you:
 1. Analysis of its constraints and conditions for completion.
 2. Respond with a specific plan of how to solve the task.
-
-After that, you can solve the task in two ways:
-- Delegate the resolution of tasks to other experts created by seeking a group of experts for help and derive conclusive insights from their conversation summarization.
-- Analysis and solve the task with your coding and language skills.
+3. [IMPORTANT] Use the tool "seek_experts" to create experts. Do not try to solve the task on your own.
+4. Delegate the resolution of tasks to other experts created by seeking a group of experts for help and derive conclusive insights from their conversation summarization.
 
 # How to seek experts help
-The tool "seek_experts_help" can build a group of experts according to the building_task and let them chat with each other in a group chat to solve the execution_task you provided.
+The tool "seek_experts" can build a group of experts according to the building_task and let them chat with each other in a group chat to solve the execution_task you provided.
 - This tool will summarize the essence of the experts' conversation and the derived conclusions.
 - You should not modify any task information from meta_user_proxy, including code blocks, but you can provide extra information.
 - Within a single response, you are limited to initiating one group of experts.
@@ -105,7 +122,7 @@ You should Provide the following information in markdown format.
 ## [Optional] results (including code blocks) and reason from last response
 ...
 
-# After seek_experts_help
+# After seek_experts
 You will receive a comprehensive conclusion from the conversation, including the task information, results, reason for the results, conversation contradiction or issues, and additional information.
 You **must** conduct a thorough verification for the result and reason's logical compliance by leveraging the step-by-step backward reasoning with the same group of experts (with the same group name) when:
 - The conversation has contradictions or issues (need double-check marked as yes), or
@@ -114,11 +131,8 @@ You **must** conduct a thorough verification for the result and reason's logical
 Note that the previous experts will forget everything after you obtain the response from them. You should provide the results (including code blocks) you collected from the previous experts' response and put it in the new execution_task.
 
 # Some useful instructions
-- You only have one tool called "seek_experts_help".
-- Provide a answer yourself after "seek_experts_help".
-- You should suggest python code in a python coding block (```python...```). If you need to get the value of a variable, you must use the print statement.
-- When using code, you must indicate the script type in the code block.
-- Do not suggest incomplete code which requires users to modify.
+- You only have one tool called "seek_experts".
+- Take this into consideration when making plan: the code execution environments for this project are limited to python and shell.
 - Be clear about which step uses code, which step uses your language skill, and which step to build a group chat.
 - If the code's result indicates there is an error, fix the error and output the whole code again.
 - If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try.
@@ -191,11 +205,11 @@ Note that the previous experts will forget everything after you obtain the respo
                 nested_config["autobuild_tool_config"] = {}
             nested_config["autobuild_tool_config"]["tool_root"] = tool_lib
 
-        self.assistant = ConversableAgent(name="CaptainAgent", system_message=system_message, llm_config=llm_config)
+        self.assistant = ConversableAgent(name="Seed_Assistant", system_message=system_message, human_input_mode="NEVER", llm_config=llm_config)
         self.assistant.update_tool_signature(self.AUTOBUILD_TOOL, is_remove=False)
 
         self.executor = CaptainUserProxyAgent(
-            name="Expert_summoner",
+            name="Task_Supervisor",
             nested_config=nested_config,
             agent_config_save_path=agent_config_save_path,
             is_termination_msg=lambda x: x.get("content", "") and "terminate" in x.get("content", "").lower(),
@@ -360,7 +374,7 @@ Collect information from the general task, follow the suggestions from manager t
         )
         self.register_function(
             function_map={
-                "seek_experts_help": lambda **args: self._run_autobuild(**args),
+                "seek_experts": lambda **args: self._run_autobuild(**args),
             }
         )
         self._agent_config_save_path = agent_config_save_path
@@ -375,9 +389,10 @@ Collect information from the general task, follow the suggestions from manager t
         Build a group of agents by AutoBuild to solve the task.
         This function requires the nested_config to contain the autobuild_init_config, autobuild_llm_config, group_chat_llm_config.
         """
-        print("==> Running AutoBuild...", flush=True)
-        print("\n==> Building task: ", building_task, flush=True)
-        print("\n==> Execution task: ", execution_task, flush=True)
+        iostream = IOStream.get_default()
+        iostream.print("\n==> Building Operation: \n", building_task, flush=True)
+        iostream.print("==> Executing Operation: \n", execution_task, flush=True)
+        iostream.print("\n", "-" * 80, flush=True, sep="")
 
         builder = AgentBuilder(**self._nested_config["autobuild_init_config"])
         # if the group is already built, load from history
@@ -393,7 +408,7 @@ Collect information from the general task, follow the suggestions from manager t
                 for idx, agent in enumerate(agent_list):
                     if idx == len(self.tool_history[group_name]):
                         break
-                    tool_builder.bind(agent, "\n\n".join(self.tool_history[group_name][idx]))
+                    tool_builder.bind(agent, "\n".join(self.tool_history[group_name][idx]))
                 agent_list[-1] = tool_builder.bind_user_proxy(agent_list[-1], tool_root_dir)
         else:
             if self._nested_config["autobuild_build_config"].get("library_path_or_json", None):
@@ -404,7 +419,7 @@ Collect information from the general task, follow the suggestions from manager t
                 self.build_history[group_name] = agent_configs.copy()
 
                 if self._nested_config.get("autobuild_tool_config", None) and agent_configs["coding"] is True:
-                    print("==> Retrieving tools...", flush=True)
+                    iostream.print(colored("==> Retrieving tools...", "green"), flush=True)
                     skills = building_task.split("\n")
                     if len(skills) == 0:
                         skills = [building_task]
@@ -429,7 +444,7 @@ Collect information from the general task, follow the suggestions from manager t
                             tool_path = os.path.join(tool_root_dir, category, f"{tool_name}.py")
                             docstring = get_full_tool_description(tool_path)
                             docstrings.append(docstring)
-                        tool_builder.bind(agent_list[idx], "\n\n".join(docstrings))
+                        tool_builder.bind(agent_list[idx], "\n".join(docstrings))
                         # log tools
                         tool_history = self.tool_history.get(group_name, [])
                         tool_history.append(docstrings)
@@ -446,7 +461,7 @@ Collect information from the general task, follow the suggestions from manager t
 
         if self._agent_config_save_path is not None:
             building_task_md5 = hashlib.md5(building_task.encode("utf-8")).hexdigest()
-            with open(f"{self._agent_config_save_path}/build_history_{building_task_md5}.json", "w") as f:
+            with open(f"{self._agent_config_save_path}/builder_config.json", "w") as f:
                 json.dump(self.build_history, f)
 
         self.build_times += 1
@@ -457,6 +472,19 @@ Collect information from the general task, follow the suggestions from manager t
             allow_repeat_speaker=agent_list[:-1] if agent_configs["coding"] is True else agent_list,
             **self._nested_config["group_chat_config"],
         )
+
+        query_engine = FalkorGraphQueryEngine(
+            name="Seed_Knowledge_Graph",
+            host="seed_knowledge_db",  # Change
+            port=6379,  # if needed
+            model_name=seed_config_setting[0]["model"],
+            model_type=graph_model_type,
+        )
+
+        query_engine.connect_db()
+        graph_rag_capability = FalkorGraphRagCapability(query_engine)
+        graph_rag_capability.add_to_agent(agent_list)
+
         manager = autogen.GroupChatManager(
             groupchat=nested_group_chat,
             llm_config=self._nested_config["group_chat_llm_config"],

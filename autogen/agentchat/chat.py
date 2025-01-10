@@ -8,7 +8,7 @@ import asyncio
 import datetime
 import logging
 import warnings
-from collections import abc, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Dict, List, Set, Tuple
@@ -144,18 +144,21 @@ def __post_carryover_processing(chat_info: Dict[str, Any]) -> None:
         print_message = "Dict: " + str(message)
     elif message is None:
         print_message = "None"
-    iostream.print(colored("\n" + "*" * 80, "blue"), flush=True, sep="")
+
     iostream.print(
         colored(
-            "Starting a new chat....",
+            ".....@Seed_Agents Working on the task.....\n",
             "blue",
         ),
         flush=True,
     )
+
+    # Print the current time
+    iostream.print(f"==> Task Assigned Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n", flush=True)
+
     if chat_info.get("verbose", False):
         iostream.print(colored("Message:\n" + print_message, "blue"), flush=True)
         iostream.print(colored("Carryover:\n" + print_carryover, "blue"), flush=True)
-    iostream.print(colored("\n" + "*" * 80, "blue"), flush=True, sep="")
 
 
 def initiate_chats(chat_queue: List[Dict[str, Any]]) -> List[ChatResult]:

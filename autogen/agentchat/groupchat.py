@@ -462,18 +462,18 @@ class GroupChat:
 
         agents = self.agents
         n_agents = len(agents)
-        # Warn if GroupChat is underpopulated
-        if n_agents < 2:
-            raise ValueError(
-                f"GroupChat is underpopulated with {n_agents} agents. "
-                "Please add more agents to the GroupChat or use direct communication instead."
-            )
-        elif n_agents == 2 and speaker_selection_method.lower() != "round_robin" and allow_repeat_speaker:
-            logger.warning(
-                f"GroupChat is underpopulated with {n_agents} agents. "
-                "Consider setting speaker_selection_method to 'round_robin' or allow_repeat_speaker to False, "
-                "or use direct communication, unless repeated speaker is desired."
-            )
+        # # Warn if GroupChat is underpopulated
+        # if n_agents < 2:
+        #     raise ValueError(
+        #         f"GroupChat is underpopulated with {n_agents} agents. "
+        #         "Please add more agents to the GroupChat or use direct communication instead."
+        #     )
+        # elif n_agents == 2 and speaker_selection_method.lower() != "round_robin" and allow_repeat_speaker:
+        #     logger.warning(
+        #         f"GroupChat is underpopulated with {n_agents} agents. "
+        #         "Consider setting speaker_selection_method to 'round_robin' or allow_repeat_speaker to False, "
+        #         "or use direct communication, unless repeated speaker is desired."
+        #     )
 
         if (
             self.func_call_filter
@@ -1169,7 +1169,7 @@ class GroupChatManager(ConversableAgent):
                 speaker = groupchat.select_speaker(speaker, self)
                 if not silent:
                     iostream = IOStream.get_default()
-                    iostream.print(colored(f"\nNext speaker: {speaker.name}\n", "green"), flush=True)
+                    iostream.print(colored(f"Next speaker: {speaker.name}\n", "green"), flush=True)
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
             except KeyboardInterrupt:
