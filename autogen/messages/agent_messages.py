@@ -6,6 +6,7 @@ from abc import ABC
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Union
 from uuid import UUID
+import datetime
 
 from pydantic import BaseModel
 from termcolor import colored
@@ -147,22 +148,23 @@ class ToolCall(BaseModel):
     type: str
 
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
-        f = f or print
+        pass
+        # f = f or print
 
-        id = self.id or "No tool call id found"
+        # id = self.id or "No tool call id found"
 
-        name = self.function.name or "(No function name found)"
-        arguments = self.function.arguments or "(No arguments found)"
+        # name = self.function.name or "(No function name found)"
+        # arguments = self.function.arguments or "(No arguments found)"
 
-        func_print = f"***** Suggested tool call ({id}): {name} *****"
-        f(colored(func_print, "green"), flush=True)
-        f(
-            "Arguments: \n",
-            arguments,
-            flush=True,
-            sep="",
-        )
-        f(colored("*" * len(func_print), "green"), flush=True)
+        # func_print = f"***** Suggested tool call ({id}): {name} *****"
+        # f(colored(func_print, "green"), flush=True)
+        # f(
+        #     "Arguments: \n",
+        #     arguments,
+        #     flush=True,
+        #     sep="",
+        # )
+        # f(colored("*" * len(func_print), "green"), flush=True)
 
 
 @wrap_message
@@ -320,18 +322,23 @@ class PostCarryoverProcessingMessage(BaseMessage):
 
         print_carryover = self._process_carryover()
 
-        f(colored("\n" + "*" * 80, "blue"), flush=True, sep="")
         f(
             colored(
-                "Starting a new chat....",
+                ".....@Seed_Agents Working on the task.....\n",
                 "blue",
             ),
             flush=True,
         )
+        
+        # Add task assigned time
+        f(
+            f"==> Task Assigned Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n",
+            flush=True,
+        )
+
         if self.verbose:
             f(colored("Message:\n" + self.message, "blue"), flush=True)
             f(colored("Carryover:\n" + print_carryover, "blue"), flush=True)
-        f(colored("\n" + "*" * 80, "blue"), flush=True, sep="")
 
 
 @wrap_message
@@ -512,7 +519,7 @@ class GroupChatRunChatMessage(BaseMessage):
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
         f = f or print
 
-        f(colored(f"\nNext speaker: {self.speaker_name}\n", "green"), flush=True)
+        f(colored(f"Next speaker: {self.speaker_name}\n", "green"), flush=True)
 
 
 @wrap_message
@@ -588,7 +595,7 @@ class ExecuteCodeBlockMessage(BaseMessage):
 
         f(
             colored(
-                f"\n>>>>>>>> EXECUTING CODE BLOCK {self.code_block_count} (inferred language is {self.language})...",
+                f">>>>>>>> EXECUTING CODE BLOCK {self.code_block_count} (inferred language is {self.language})...",
                 "red",
             ),
             flush=True,
@@ -620,7 +627,7 @@ class ExecuteFunctionMessage(BaseMessage):
 
         f(
             colored(
-                f"\n>>>>>>>> EXECUTING FUNCTION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}",
+                f">>>>>>>> PERFORMING OPERATION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}",
                 "magenta",
             ),
             flush=True,
@@ -659,7 +666,7 @@ class ExecutedFunctionMessage(BaseMessage):
 
         f(
             colored(
-                f"\n>>>>>>>> EXECUTED FUNCTION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}\nOutput:\n{self.content}",
+                f">>>>>>>> EXECUTED OPERATION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}\nOutput:\n{self.content}",
                 "magenta",
             ),
             flush=True,
@@ -788,19 +795,20 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
         if num_code_blocks == 1:
             f(
                 colored(
-                    f"\n>>>>>>>> EXECUTING CODE BLOCK (inferred language is {self.code_block_languages[0]})...",
+                    f">>>>>>>> EXECUTING CODE BLOCK (inferred language is {self.code_block_languages[0]})...",
                     "red",
                 ),
                 flush=True,
             )
         else:
-            f(
-                colored(
-                    f"\n>>>>>>>> EXECUTING {num_code_blocks} CODE BLOCKS (inferred languages are [{', '.join([x for x in self.code_block_languages])}])...",
-                    "red",
-                ),
-                flush=True,
-            )
+            for i, code_block in enumerate(self.code_blocks):
+                f(
+                    colored(
+                        f">>>>>>>> EXECUTING CODE BLOCK {i + 1} (inferred language is {code_block.language})...",
+                        "red",
+                    ),
+                    flush=True,
+                )
 
 
 @wrap_message
