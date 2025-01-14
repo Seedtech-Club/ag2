@@ -35,6 +35,7 @@ __all__ = ("LocalCommandLineCodeExecutor",)
 
 A = ParamSpec("A")
 
+
 class LocalCommandLineCodeExecutor(CodeExecutor):
     SUPPORTED_LANGUAGES: ClassVar[list[str]] = [
         "bash",

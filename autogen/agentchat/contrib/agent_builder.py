@@ -52,7 +52,7 @@ class AgentBuilder:
     AgentBuilder can help user build an automatic task solving process powered by multi-agent system.
     Specifically, our building pipeline includes initialize and build.
     """
-    
+
     online_server_name = "online"
 
     DEFAULT_PROXY_AUTO_REPLY = 'There is no code from the last one message for me to execute.'
@@ -669,7 +669,6 @@ Match roles in the role set to each expert in expert set.
             agent_list: a list of agents.
             cached_configs: cached configs.
         """
-        
         agent_configs = self.cached_configs["agent_configs"]
         default_llm_config = self.cached_configs["default_llm_config"]
         coding = self.cached_configs["coding"]

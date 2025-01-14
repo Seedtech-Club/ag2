@@ -575,18 +575,21 @@ class ConversableAgent(LLMAgent):
         """
         self._context_variables.update(context_variables)
 
-    def pop_context_key(self, key: str, default: Any = None) -> Any:
+    def pop_context(self, key: str, default: Any = None) -> Any:
         """
         Remove and return a context variable.
-
         Args:
             key: The key to remove
             default: Value to return if key doesn't exist
-
         Returns:
             The value that was removed, or default if key not found
         """
         return self._context_variables.pop(key, default)
+
+    @property
+    def system_message(self) -> str:
+        """Return the system message."""
+        return self._oai_system_message[0]["content"]
 
     def update_system_message(self, system_message: str) -> None:
         """Update the system message.
