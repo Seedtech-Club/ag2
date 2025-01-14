@@ -7,14 +7,21 @@
 from .agent import Agent
 from .assistant_agent import AssistantAgent
 from .chat import ChatResult, initiate_chats
+from .contrib.reasoning_agent import (
+    ReasoningAgent,
+    ThinkNode,
+    visualize_tree,
+)
 
 # Imported last to avoid circular imports
 from .contrib.swarm_agent import (
     AFTER_WORK,
     ON_CONDITION,
+    UPDATE_SYSTEM_MESSAGE,
     AfterWorkOption,
     SwarmAgent,
     SwarmResult,
+    a_initiate_swarm_chat,
     initiate_swarm_chat,
 )
 from .conversable_agent import ConversableAgent, register_function
@@ -34,9 +41,14 @@ __all__ = [
     "gather_usage_summary",
     "ChatResult",
     "initiate_swarm_chat",
+    "a_initiate_swarm_chat",
     "SwarmAgent",
     "SwarmResult",
     "ON_CONDITION",
     "AFTER_WORK",
     "AfterWorkOption",
+    "UPDATE_SYSTEM_MESSAGE",
+    "ReasoningAgent",
+    "visualize_tree",
+    "ThinkNode",
 ]

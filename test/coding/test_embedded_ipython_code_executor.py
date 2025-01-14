@@ -9,15 +9,15 @@ import sys
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Dict, Type, Union
+from typing import Union
 
 import pytest
-from conftest import MOCK_OPEN_AI_API_KEY, skip_docker, skip_openai  # noqa: E402
 
 from autogen.agentchat.conversable_agent import ConversableAgent
 from autogen.coding.base import CodeBlock, CodeExecutor
 from autogen.coding.factory import CodeExecutorFactory
-from autogen.oai.openai_utils import config_list_from_json
+
+from ..conftest import MOCK_OPEN_AI_API_KEY, skip_docker  # noqa: E402
 
 try:
     from autogen.coding.jupyter import (
@@ -61,7 +61,7 @@ def test_is_code_executor(cls) -> None:
 
 @pytest.mark.skipif(skip, reason=skip_reason)
 def test_create_dict() -> None:
-    config: Dict[str, Union[str, CodeExecutor]] = {"executor": "ipython-embedded"}
+    config: dict[str, Union[str, CodeExecutor]] = {"executor": "ipython-embedded"}
     executor = CodeExecutorFactory.create(config)
     assert isinstance(executor, EmbeddedIPythonCodeExecutor)
 
@@ -190,7 +190,7 @@ def test_save_image(cls) -> None:
 
 @pytest.mark.skipif(skip, reason=skip_reason)
 @pytest.mark.parametrize("cls", classes_to_test)
-def test_timeout_preserves_kernel_state(cls: Type[CodeExecutor]) -> None:
+def test_timeout_preserves_kernel_state(cls: type[CodeExecutor]) -> None:
     executor = cls(timeout=1)
     code_blocks = [CodeBlock(code="x = 123", language="python")]
     code_result = executor.execute_code_blocks(code_blocks)

@@ -1,6 +1,6 @@
 sonichi:
   name: Chi Wang
-  title: Founder of AutoGen & FLAML
+  title: Founder of AutoGen (now AG2) & FLAML
   url: https://www.linkedin.com/in/chi-wang-autogen/
   image_url: https://github.com/sonichi.png
 
@@ -122,12 +122,13 @@ yifanzeng:
   name: Yifan Zeng
   title: PhD student at Oregon State University
   url: https://xhmy.github.io/
-  image_url: https://xhmy.github.io/assets/img/photo.JPG
+  image_url: https://xhmy.github.io/assets/img/photo.jpg
 
 jluey:
   name: James Woffinden-Luey
   title: Senior Research Engineer at Microsoft Research
   url: https://github.com/jluey1
+  image_url: https://github.com/jluey1.png
 
 Hk669:
   name: Hrushikesh Dokala
@@ -188,3 +189,15 @@ AgentGenie:
   title: AG2 Contributor
   url: https://github.com/AgentGenie
   image_url: https://github.com/AgentGenie.png
+
+davorinrusevljan:
+  name: Davorin Ruševljan
+  title: Developer
+  url: https://github.com/davorinrusevljan
+  image_url: https://github.com/davorinrusevljan.png
+
+rjambrecic:
+  name: Robert Jambrecic
+  title: Machine Learning Engineer at Airt
+  url: https://github.com/rjambrecic
+  image_url: https://github.com/rjambrecic.png

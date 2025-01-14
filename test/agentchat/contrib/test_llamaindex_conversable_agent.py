@@ -6,21 +6,15 @@
 # SPDX-License-Identifier: MIT
 #!/usr/bin/env python3 -m pytest
 
-import os
-import sys
-import unittest
 from unittest.mock import MagicMock, patch
 
 import pytest
-from conftest import MOCK_OPEN_AI_API_KEY
 
 from autogen import GroupChat, GroupChatManager
 from autogen.agentchat.contrib.llamaindex_conversable_agent import LLamaIndexConversableAgent
 from autogen.agentchat.conversable_agent import ConversableAgent
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import reason, skip_openai
+from ...conftest import MOCK_OPEN_AI_API_KEY, reason, skip_openai
 
 skip_reasons = [reason]
 try:
@@ -48,7 +42,7 @@ def test_group_chat_with_llama_index_conversable_agent(chat_mock: MagicMock) -> 
     Each agent is set to describe an image in a unique style, but the chat should not exceed the specified max_rounds.
     """
     llm = OpenAI(
-        model="gpt-4",
+        model="gpt-4o",
         temperature=0.0,
         api_key=openaiKey,
     )

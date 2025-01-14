@@ -11,6 +11,7 @@ Example usage:
 Install the `anthropic` package by running `pip install --upgrade anthropic`.
 - https://docs.anthropic.com/en/docs/quickstart-guide
 
+```python
 import autogen
 
 config_list = [
@@ -22,12 +23,14 @@ config_list = [
 ]
 
 assistant = autogen.AssistantAgent("assistant", llm_config={"config_list": config_list})
+```
 
 Example usage for Anthropic Bedrock:
 
 Install the `anthropic` package by running `pip install --upgrade anthropic`.
 - https://docs.anthropic.com/en/docs/quickstart-guide
 
+```python
 import autogen
 
 config_list = [
@@ -42,7 +45,28 @@ config_list = [
 ]
 
 assistant = autogen.AssistantAgent("assistant", llm_config={"config_list": config_list})
+```
 
+Example usage for Anthropic VertexAI:
+
+Install the `anthropic` package by running `pip install anthropic[vertex]`.
+- https://docs.anthropic.com/en/docs/quickstart-guide
+
+```python
+
+import autogen
+config_list = [
+    {
+        "model": "claude-3-5-sonnet-20240620-v1:0",
+        "gcp_project_id": "dummy_project_id",
+        "gcp_region": "us-west-2",
+        "gcp_auth_token": "dummy_auth_token",
+        "api_type": "anthropic",
+    }
+]
+
+assistant = autogen.AssistantAgent("assistant", llm_config={"config_list": config_list})
+```python
 """
 
 from __future__ import annotations
@@ -53,16 +77,15 @@ import json
 import os
 import time
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Annotated, Any, Dict, List, Optional, Tuple, Union
 
-from anthropic import Anthropic, AnthropicBedrock
+from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex
 from anthropic import __version__ as anthropic_version
 from anthropic.types import Completion, Message, TextBlock, ToolUseBlock
 from openai.types.chat import ChatCompletion, ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion import ChatCompletionMessage, Choice
 from openai.types.completion_usage import CompletionUsage
 from pydantic import BaseModel
-from typing_extensions import Annotated
 
 from autogen.oai.client_utils import validate_parameter
 
@@ -98,6 +121,9 @@ class AnthropicClient:
         self._aws_secret_key = kwargs.get("aws_secret_key", None)
         self._aws_session_token = kwargs.get("aws_session_token", None)
         self._aws_region = kwargs.get("aws_region", None)
+        self._gcp_project_id = kwargs.get("gcp_project_id", None)
+        self._gcp_region = kwargs.get("gcp_region", None)
+        self._gcp_auth_token = kwargs.get("gcp_auth_token", None)
 
         if not self._api_key:
             self._api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -111,16 +137,30 @@ class AnthropicClient:
         if not self._aws_region:
             self._aws_region = os.getenv("AWS_REGION")
 
-        if self._api_key is None and (
-            self._aws_access_key is None or self._aws_secret_key is None or self._aws_region is None
-        ):
-            raise ValueError("API key or AWS credentials are required to use the Anthropic API.")
+        if not self._gcp_region:
+            self._gcp_region = os.getenv("GCP_REGION")
+
+        if self._api_key is None:
+            if self._aws_region:
+                if self._aws_access_key is None or self._aws_secret_key is None:
+                    raise ValueError("API key or AWS credentials are required to use the Anthropic API.")
+            elif self._gcp_region:
+                if self._gcp_project_id is None or self._gcp_region is None:
+                    raise ValueError("API key or GCP credentials are required to use the Anthropic API.")
+            else:
+                raise ValueError("API key or AWS credentials or GCP credentials are required to use the Anthropic API.")
 
         if "response_format" in kwargs and kwargs["response_format"] is not None:
             warnings.warn("response_format is not supported for Anthropic, it will be ignored.", UserWarning)
 
         if self._api_key is not None:
             self._client = Anthropic(api_key=self._api_key)
+        elif self._gcp_region is not None:
+            kw = {}
+            for i, p in enumerate(inspect.signature(AnthropicVertex).parameters):
+                if hasattr(self, f"_gcp_{p}"):
+                    kw[p] = getattr(self, f"_gcp_{p}")
+            self._client = AnthropicVertex(**kw)
         else:
             self._client = AnthropicBedrock(
                 aws_access_key=self._aws_access_key,
@@ -131,7 +171,7 @@ class AnthropicClient:
 
         self._last_tooluse_status = {}
 
-    def load_config(self, params: Dict[str, Any]):
+    def load_config(self, params: dict[str, Any]):
         """Load the configuration for the Anthropic API client."""
         anthropic_params = {}
 
@@ -180,7 +220,19 @@ class AnthropicClient:
     def aws_region(self):
         return self._aws_region
 
-    def create(self, params: Dict[str, Any]) -> ChatCompletion:
+    @property
+    def gcp_project_id(self):
+        return self._gcp_project_id
+
+    @property
+    def gcp_region(self):
+        return self._gcp_region
+
+    @property
+    def gcp_auth_token(self):
+        return self._gcp_auth_token
+
+    def create(self, params: dict[str, Any]) -> ChatCompletion:
         if "tools" in params:
             converted_functions = self.convert_tools_to_functions(params["tools"])
             params["functions"] = params.get("functions", []) + converted_functions
@@ -267,7 +319,7 @@ class AnthropicClient:
 
         return response_oai
 
-    def message_retrieval(self, response) -> List:
+    def message_retrieval(self, response) -> list:
         """
         Retrieve and return a list of strings or a list of Choice.Message from the response.
 
@@ -283,7 +335,7 @@ class AnthropicClient:
         return res
 
     @staticmethod
-    def get_usage(response: ChatCompletion) -> Dict:
+    def get_usage(response: ChatCompletion) -> dict:
         """Get the usage of tokens and their cost information."""
         return {
             "prompt_tokens": response.usage.prompt_tokens if response.usage is not None else 0,
@@ -294,7 +346,7 @@ class AnthropicClient:
         }
 
     @staticmethod
-    def convert_tools_to_functions(tools: List) -> List:
+    def convert_tools_to_functions(tools: list) -> list:
         functions = []
         for tool in tools:
             if tool.get("type") == "function" and "function" in tool:
@@ -303,7 +355,7 @@ class AnthropicClient:
         return functions
 
 
-def oai_messages_to_anthropic_messages(params: Dict[str, Any]) -> list[dict[str, Any]]:
+def oai_messages_to_anthropic_messages(params: dict[str, Any]) -> list[dict[str, Any]]:
     """Convert messages from OAI format to Anthropic format.
     We correct for any specific role orders and types, etc.
     """

@@ -19,6 +19,7 @@ class DocumentType(Enum):
     PDF = auto()
     URL = auto()
     DOCX = auto()
+    JSON = auto()
 
 
 @dataclass

@@ -11,13 +11,12 @@ import re
 import uuid
 from pathlib import Path
 from queue import Empty
-from typing import Any, ClassVar, List
+from typing import Any
 
 from jupyter_client import KernelManager  # type: ignore[attr-defined]
 from jupyter_client.kernelspec import KernelSpecManager
 from pydantic import BaseModel, Field, field_validator
 
-from ...agentchat.agent import LLMAgent
 from ..base import CodeBlock, CodeExtractor, IPythonCodeResult
 from ..markdown_code_extractor import MarkdownCodeExtractor
 
@@ -76,7 +75,7 @@ class EmbeddedIPythonCodeExecutor(BaseModel):
         """(Experimental) Export a code extractor that can be used by an agent."""
         return MarkdownCodeExtractor()
 
-    def execute_code_blocks(self, code_blocks: List[CodeBlock]) -> IPythonCodeResult:
+    def execute_code_blocks(self, code_blocks: list[CodeBlock]) -> IPythonCodeResult:
         """(Experimental) Execute a list of code blocks and return the result.
 
         This method executes a list of code blocks as cells in an IPython kernel

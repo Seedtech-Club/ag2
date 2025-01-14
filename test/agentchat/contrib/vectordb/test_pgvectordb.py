@@ -9,9 +9,8 @@ import sys
 import urllib.parse
 
 import pytest
-from conftest import reason
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from ....conftest import reason
 
 try:
     import pgvector
@@ -133,7 +132,7 @@ def test_pgvector():
     res = db.get_docs_by_ids(["1", "2"], collection_name)
     assert [r["id"] for r in res] == ["2"]  # "1" has been deleted
     res = db.get_docs_by_ids(collection_name=collection_name)
-    assert set([r["id"] for r in res]) == set(["2", "3"])  # All Docs returned
+    assert {r["id"] for r in res} == {"2", "3"}  # All Docs returned
 
 
 if __name__ == "__main__":

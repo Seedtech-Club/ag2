@@ -1,40 +1,54 @@
 # Website
 
-This website is built using [Docusaurus 3](https://docusaurus.io/), a modern static website generator.
+This website is built using [Mintlify](https://mintlify.com/docs/quickstart), a modern website generator.
 
-## Prerequisites
+## How to get a notebook rendered on the website
 
-To build and test documentation locally, begin by downloading and installing [Node.js](https://nodejs.org/en/download/), and then installing [Yarn](https://classic.yarnpkg.com/en/).
-On Windows, you can install via the npm package manager (npm) which comes bundled with Node.js:
+See [here](https://github.com/ag2ai/ag2/blob/main/notebook/contributing.md#how-to-get-a-notebook-displayed-on-the-website) for instructions on how to get a notebook in the `notebook` directory rendered on the website.
 
-```console
-npm install --global yarn
+## Build documentation locally
+
+1. To build and test documentation locally, first install [Node.js](https://nodejs.org/en/download/). For example,
+
+```bash
+nvm install --lts
 ```
 
-## Installation
+Then, install the required packages by running the following commands:
 
-```console
-pip install pydoc-markdown pyyaml colored
-cd website
-yarn install
+```bash
+pip install pydoc-markdown pyyaml termcolor nbclient
 ```
 
-### Install Quarto
+2. You also need to install quarto. Please click on the `Pre-release` tab from [this website](https://quarto.org/docs/download/) to download the latest version of `quarto` and install it. Ensure that the `quarto` version is `1.5.23` or higher.
 
-`quarto` is used to render notebooks.
-
-Install it [here](https://github.com/quarto-dev/quarto-cli/releases).
-
-> Note: Ensure that your `quarto` version is `1.5.23` or higher.
-
-## Local Development
-
-Navigate to the `website` folder and run:
+3. Finally, run the following commands to build and serve the documentation:
 
 ```console
-pydoc-markdown
-python ./process_notebooks.py render
-yarn start
+./scripts/docs_serve.sh
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+The last command starts a local development server and opens up a browser window.
+Most changes are reflected live without having to restart the server.
+
+## Build with Docker
+
+To build and test documentation within a docker container, run the following commands from your project root directory:
+
+```bash
+docker build -f .devcontainer/dev/Dockerfile -t ag2ai_dev_img https://github.com/ag2ai/ag2.git#main
+```
+
+Then start the container like so, this will log you in and ensure that Docker port 3000 is mapped to port 8081 on your local machine:
+
+```bash
+docker run -it -p 8081:3000 -v $(pwd):/home/autogen/ag2 ag2ai_dev_img bash
+```
+
+Once at the CLI in Docker run the following commands:
+
+```console
+./scripts/docs_serve.sh
+```
+
+Once done you should be able to access the documentation at `http://127.0.0.1:8081`

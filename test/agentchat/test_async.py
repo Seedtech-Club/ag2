@@ -7,16 +7,12 @@
 #!/usr/bin/env python3 -m pytest
 
 import asyncio
-import os
-import sys
 
 import pytest
-from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST
 
 import autogen
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import reason, skip_openai  # noqa: E402
+from ..conftest import Credentials, reason, skip_openai  # noqa: E402
 
 
 def get_market_news(ind, ind_upper):
@@ -62,8 +58,8 @@ def get_market_news(ind, ind_upper):
 
 @pytest.mark.skipif(skip_openai, reason=reason)
 @pytest.mark.asyncio
-async def test_async_groupchat():
-    config_list = autogen.config_list_from_json(OAI_CONFIG_LIST, KEY_LOC, filter_dict={"tags": ["gpt-4o-mini"]})
+async def test_async_groupchat(credentials_gpt_4o_mini: Credentials):
+    config_list = credentials_gpt_4o_mini.config_list
 
     # create an AssistantAgent instance named "assistant"
     assistant = autogen.AssistantAgent(
@@ -96,8 +92,8 @@ async def test_async_groupchat():
 
 @pytest.mark.skipif(skip_openai, reason=reason)
 @pytest.mark.asyncio
-async def test_stream():
-    config_list = autogen.config_list_from_json(OAI_CONFIG_LIST, KEY_LOC, filter_dict={"tags": ["gpt-4o-mini"]})
+async def test_stream(credentials_gpt_4o_mini: Credentials):
+    config_list = credentials_gpt_4o_mini.config_list
     data = asyncio.Future()
 
     async def add_stock_price_data():

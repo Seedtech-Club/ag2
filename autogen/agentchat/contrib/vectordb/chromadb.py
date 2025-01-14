@@ -39,11 +39,11 @@ class ChromaVectorDB(VectorDB):
         Args:
             client: chromadb.Client | The client object of the vector database. Default is None.
                 If provided, it will use the client object directly and ignore other arguments.
-            path: str | The path to the vector database. Default is `tmp/db`. The default was `None` for version <=0.2.24.
+            path: str | The path to the vector database. Default is `tmp/db`. The default was `None` for version `<=0.2.24`.
             embedding_function: Callable | The embedding function used to generate the vector representation
                 of the documents. Default is None, SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2") will be used.
             metadata: dict | The metadata of the vector database. Default is None. If None, it will use this
-                setting: {"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}. For more details of
+                setting: `{"hnsw:space": "ip", "hnsw:construction_ef": 30, "hnsw:M": 32}`. For more details of
                 the metadata, please refer to [distances](https://github.com/nmslib/hnswlib#supported-distances),
                 [hnsw](https://github.com/chroma-core/chroma/blob/566bc80f6c8ee29f7d99b6322654f32183c368c4/chromadb/segment/impl/vector/local_hnsw.py#L184),
                 and [ALGO_PARAMS](https://github.com/nmslib/hnswlib/blob/master/ALGO_PARAMS.md).
@@ -169,7 +169,7 @@ class ChromaVectorDB(VectorDB):
             else:
                 collection.add(**collection_kwargs)
 
-    def insert_docs(self, docs: List[Document], collection_name: str = None, upsert: bool = False) -> None:
+    def insert_docs(self, docs: list[Document], collection_name: str = None, upsert: bool = False) -> None:
         """
         Insert documents into the collection of the vector database.
 
@@ -204,7 +204,7 @@ class ChromaVectorDB(VectorDB):
             metadatas = [doc.get("metadata") for doc in docs]
         self._batch_insert(collection, embeddings, ids, metadatas, documents, upsert)
 
-    def update_docs(self, docs: List[Document], collection_name: str = None) -> None:
+    def update_docs(self, docs: list[Document], collection_name: str = None) -> None:
         """
         Update documents in the collection of the vector database.
 
@@ -217,7 +217,7 @@ class ChromaVectorDB(VectorDB):
         """
         self.insert_docs(docs, collection_name, upsert=True)
 
-    def delete_docs(self, ids: List[ItemID], collection_name: str = None, **kwargs) -> None:
+    def delete_docs(self, ids: list[ItemID], collection_name: str = None, **kwargs) -> None:
         """
         Delete documents from the collection of the vector database.
 
@@ -234,7 +234,7 @@ class ChromaVectorDB(VectorDB):
 
     def retrieve_docs(
         self,
-        queries: List[str],
+        queries: list[str],
         collection_name: str = None,
         n_results: int = 10,
         distance_threshold: float = -1,
@@ -248,7 +248,7 @@ class ChromaVectorDB(VectorDB):
             collection_name: str | The name of the collection. Default is None.
             n_results: int | The number of relevant documents to return. Default is 10.
             distance_threshold: float | The threshold for the distance score, only distance smaller than it will be
-                returned. Don't filter with it if < 0. Default is -1.
+                returned. Don't filter with it if `< 0`. Default is -1.
             kwargs: Dict | Additional keyword arguments.
 
         Returns:
@@ -269,7 +269,7 @@ class ChromaVectorDB(VectorDB):
         return results
 
     @staticmethod
-    def _chroma_get_results_to_list_documents(data_dict) -> List[Document]:
+    def _chroma_get_results_to_list_documents(data_dict) -> list[Document]:
         """Converts a dictionary with list values to a list of Document.
 
         Args:
@@ -279,6 +279,7 @@ class ChromaVectorDB(VectorDB):
             List[Document] | The list of Document.
 
         Example:
+            ```python
             data_dict = {
                 "key1s": [1, 2, 3],
                 "key2s": ["a", "b", "c"],
@@ -291,6 +292,7 @@ class ChromaVectorDB(VectorDB):
                 {"key1": 2, "key2": "b", "key4": "y"},
                 {"key1": 3, "key2": "c", "key4": "z"},
             ]
+            ```
         """
 
         results = []
@@ -305,8 +307,8 @@ class ChromaVectorDB(VectorDB):
         return results
 
     def get_docs_by_ids(
-        self, ids: List[ItemID] = None, collection_name: str = None, include=None, **kwargs
-    ) -> List[Document]:
+        self, ids: list[ItemID] = None, collection_name: str = None, include=None, **kwargs
+    ) -> list[Document]:
         """
         Retrieve documents from the collection of the vector database based on the ids.
 

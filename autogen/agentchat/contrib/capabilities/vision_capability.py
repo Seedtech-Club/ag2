@@ -49,7 +49,7 @@ class VisionCapability(AgentCapability):
 
     def __init__(
         self,
-        lmm_config: Dict,
+        lmm_config: dict,
         description_prompt: Optional[str] = DEFAULT_DESCRIPTION_PROMPT,
         custom_caption_func: Callable = None,
     ) -> None:
@@ -105,7 +105,7 @@ class VisionCapability(AgentCapability):
         # Register a hook for processing the last message.
         agent.register_hook(hookable_method="process_last_received_message", hook=self.process_last_received_message)
 
-    def process_last_received_message(self, content: Union[str, List[dict]]) -> str:
+    def process_last_received_message(self, content: Union[str, list[dict]]) -> str:
         """
         Processes the last received message content by normalizing and augmenting it
         with descriptions of any included images. The function supports input content
@@ -141,22 +141,24 @@ class VisionCapability(AgentCapability):
             (Content is a string without an image, remains unchanged.)
 
         - Input as String, with image location:
-            content = "What's weather in this cool photo: <img http://example.com/photo.jpg>"
-            Output: "What's weather in this cool photo: <img http://example.com/photo.jpg> in case you can not see, the caption of this image is:
+            content = "What's weather in this cool photo: `<img http://example.com/photo.jpg>`"
+            Output: "What's weather in this cool photo: `<img http://example.com/photo.jpg>` in case you can not see, the caption of this image is:
             A beautiful sunset over the mountains\n"
             (Caption added after the image)
 
         - Input as List with Text Only:
-            content = [{"type": "text", "text": "Here's an interesting fact."}]
+            content = `[{"type": "text", "text": "Here's an interesting fact."}]`
             Output: "Here's an interesting fact."
             (No images in the content, it remains unchanged.)
 
         - Input as List with Image URL:
+            ```python
             content = [
                 {"type": "text", "text": "What's weather in this cool photo:"},
                 {"type": "image_url", "image_url": {"url": "http://example.com/photo.jpg"}}
             ]
-            Output: "What's weather in this cool photo: <img http://example.com/photo.jpg> in case you can not see, the caption of this image is:
+            ```
+            Output: "What's weather in this cool photo: `<img http://example.com/photo.jpg>` in case you can not see, the caption of this image is:
             A beautiful sunset over the mountains\n"
             (Caption added after the image)
         """

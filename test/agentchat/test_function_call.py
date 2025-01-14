@@ -6,19 +6,15 @@
 # SPDX-License-Identifier: MIT
 #!/usr/bin/env python3 -m pytest
 
-import asyncio
 import json
-import os
 import sys
 
 import pytest
-from test_assistant_agent import KEY_LOC, OAI_CONFIG_LIST
 
 import autogen
 from autogen.math_utils import eval_math_responses
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from conftest import skip_openai  # noqa: E402
+from ..conftest import Credentials, reason, skip_openai  # noqa: E402
 
 try:
     from openai import OpenAI
@@ -28,15 +24,8 @@ else:
     skip = False or skip_openai
 
 
-@pytest.mark.skipif(skip, reason="openai not installed OR requested to skip")
-def test_eval_math_responses():
-    config_list = autogen.config_list_from_json(
-        OAI_CONFIG_LIST,
-        filter_dict={
-            "tags": ["gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
-        },
-        file_location=KEY_LOC,
-    )
+@pytest.mark.skipif(skip, reason=reason)
+def test_eval_math_responses(credentials_gpt_4o_mini: Credentials):
     functions = [
         {
             "name": "eval_math_responses",
@@ -58,7 +47,7 @@ def test_eval_math_responses():
             },
         },
     ]
-    client = autogen.OpenAIWrapper(config_list=config_list)
+    client = autogen.OpenAIWrapper(config_list=credentials_gpt_4o_mini.config_list)
     response = client.create(
         messages=[
             {
@@ -232,18 +221,11 @@ async def test_a_execute_function():
 
 @pytest.mark.skipif(
     skip or not sys.version.startswith("3.10"),
-    reason="do not run if openai is not installed OR reeusted to skip OR py!=3.10",
+    reason=reason,
 )
-def test_update_function():
-    config_list_gpt4 = autogen.config_list_from_json(
-        OAI_CONFIG_LIST,
-        filter_dict={
-            "tags": ["gpt-4", "gpt-4-32k", "gpt-4o", "gpt-4o-mini"],
-        },
-        file_location=KEY_LOC,
-    )
+def test_update_function(credentials_gpt_4o_mini: Credentials):
     llm_config = {
-        "config_list": config_list_gpt4,
+        "config_list": credentials_gpt_4o_mini.config_list,
         "seed": 42,
         "functions": [],
     }

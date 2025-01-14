@@ -7,6 +7,7 @@
 """Create an OpenAI-compatible client using Groq's API.
 
 Example:
+    ```python
     llm_config={
         "config_list": [{
             "api_type": "groq",
@@ -16,6 +17,7 @@ Example:
     ]}
 
     agent = autogen.AssistantAgent("my_agent", llm_config=llm_config)
+    ```
 
 Install Groq's python library using: pip install --upgrade groq
 
@@ -68,8 +70,9 @@ class GroqClient:
 
         if "response_format" in kwargs and kwargs["response_format"] is not None:
             warnings.warn("response_format is not supported for Groq API, it will be ignored.", UserWarning)
+        self.base_url = kwargs.get("base_url", None)
 
-    def message_retrieval(self, response) -> List:
+    def message_retrieval(self, response) -> list:
         """
         Retrieve and return a list of strings or a list of Choice.Message from the response.
 
@@ -82,7 +85,7 @@ class GroqClient:
         return response.cost
 
     @staticmethod
-    def get_usage(response) -> Dict:
+    def get_usage(response) -> dict:
         """Return usage summary of the response using RESPONSE_USAGE_KEYS."""
         # ...  # pragma: no cover
         return {
@@ -93,7 +96,7 @@ class GroqClient:
             "model": response.model,
         }
 
-    def parse_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Loads the parameters for Groq API from the passed in parameters and returns a validated set. Checks types, ranges, and sets defaults"""
         groq_params = {}
 
@@ -129,7 +132,7 @@ class GroqClient:
 
         return groq_params
 
-    def create(self, params: Dict) -> ChatCompletion:
+    def create(self, params: dict) -> ChatCompletion:
         messages = params.get("messages", [])
 
         # Convert AutoGen messages to Groq messages
@@ -149,7 +152,7 @@ class GroqClient:
         groq_params["messages"] = groq_messages
 
         # We use chat model by default, and set max_retries to 5 (in line with typical retries loop)
-        client = Groq(api_key=self.api_key, max_retries=5)
+        client = Groq(api_key=self.api_key, max_retries=5, base_url=self.base_url)
 
         # Token counts will be returned
         prompt_tokens = 0
@@ -254,7 +257,7 @@ class GroqClient:
         return response_oai
 
 
-def oai_messages_to_groq_messages(messages: list[Dict[str, Any]]) -> list[dict[str, Any]]:
+def oai_messages_to_groq_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Convert messages from OAI format to Groq's format.
     We correct for any specific role orders and types.
     """
