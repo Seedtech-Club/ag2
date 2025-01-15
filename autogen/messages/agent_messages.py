@@ -766,6 +766,7 @@ class ClearConversableAgentHistoryWarningMessage(BaseMessage):
 @wrap_message
 class GenerateCodeExecutionReplyMessage(BaseMessage):
     code_block_languages: list[str]
+    code_blocks: list["CodeBlock"]
     sender_name: Optional[str] = None
     recipient_name: str
 
@@ -777,16 +778,14 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
         sender: Optional["Agent"] = None,
         recipient: "Agent",
     ):
-        
         code_block_languages = [code_block.language for code_block in code_blocks]
-
         super().__init__(
             uuid=uuid,
             code_block_languages=code_block_languages,
             sender_name=sender.name if sender else None,
             recipient_name=recipient.name,
-            code_blocks=code_blocks
         )
+        
 
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
         f = f or print
