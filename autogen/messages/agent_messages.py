@@ -664,7 +664,7 @@ class ExecutedFunctionMessage(BaseMessage):
 
         f(
             colored(
-                f">>>>>>>> EXECUTED OPERATION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}\nOutput:\n{self.content}",
+                f">>>>>>>> EXECUTED OPERATION {self.func_name}...\nOutput:\n{self.content}",
                 "magenta",
             ),
             flush=True,
