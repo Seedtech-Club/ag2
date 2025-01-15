@@ -779,6 +779,8 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
         sender: Optional["Agent"] = None,
         recipient: "Agent",
     ):
+        
+        self.code_blocks = code_blocks
         code_block_languages = [code_block.language for code_block in code_blocks]
 
         super().__init__(
