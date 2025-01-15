@@ -7,13 +7,14 @@ license_file = "LICENSE"
 description-file = "README.md"
 
 [project]
-name = "pyautogen"
+name = "seed-autogen"
 description = "A programming framework for agentic AI"
 readme = "README.md"
 authors = [
     {name = "Chi Wang", email = "support@ag2.ai"},
     {name = "Qingyun Wu", email = "support@ag2.ai"},
 ]
+license = { text = "Apache Software License 2.0" }
 
 keywords = [
     "ai",
@@ -25,7 +26,7 @@ keywords = [
     "ag2ai",
     "agentic"
 ]
-
+ 
 requires-python = ">=3.9,<3.14"
 
 dynamic = ["version"]

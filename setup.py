@@ -1,12 +1,8 @@
 # Copyright (c) 2023 - 2024, Owners of https://github.com/ag2ai
 #
 # SPDX-License-Identifier: Apache-2.0
-#
-# Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
-# SPDX-License-Identifier: MIT
+
 import os
-import platform
-import sys
 
 import setuptools
 
@@ -21,132 +17,58 @@ with open(os.path.join(here, "autogen/version.py")) as fp:
     exec(fp.read(), version)
 __version__ = version["__version__"]
 
-
-current_os = platform.system()
-
-install_requires = [
-    "openai>=1.3",
-    "diskcache",
-    "termcolor",
-    "flaml",
-    # numpy is installed by flaml, but we want to pin the version to below 2.x (see https://github.com/microsoft/autogen/issues/1960)
-    "numpy>=2.1; python_version>='3.13'",  # numpy 2.1+ required for Python 3.13
-    "numpy>=1.24.0,<2.0.0; python_version<'3.13'",  # numpy 1.24+ for older Python versions
-    "python-dotenv",
-    "tiktoken",
-    # Disallowing 2.6.0 can be removed when this is fixed https://github.com/pydantic/pydantic/issues/8705
-    "pydantic>=1.10,<3,!=2.6.0",  # could be both V1 and V2
-    "docker",
-    "packaging",
-]
-
-jupyter_executor = [
-    "jupyter-kernel-gateway",
-    "websocket-client",
-    "requests",
-    "jupyter-client>=8.6.0",
-    "ipykernel>=6.29.0",
-]
-
-retrieve_chat = [
-    "protobuf==4.25.3",
-    "chromadb==0.5.3",
-    "sentence_transformers",
-    "pypdf",
-    "ipython",
-    "beautifulsoup4",
-    "markdownify",
-]
-
-retrieve_chat_pgvector = [*retrieve_chat, "pgvector>=0.2.5"]
-
-graph_rag_falkor_db = ["graphrag_sdk==0.3.3", "falkordb>=1.0.10"]
-
-neo4j_graph_rag = [
-    "llama_index==0.11.8",
-    "llama-index-graph-stores-neo4j=0.3.0",
-    "llma-index-core==0.11.8",
-]
-
-if current_os in ["Windows", "Darwin"]:
-    retrieve_chat_pgvector.extend(["psycopg[binary]>=3.1.18"])
-elif current_os == "Linux":
-    retrieve_chat_pgvector.extend(["psycopg>=3.1.18"])
-
-# pysqlite3-binary used so it doesn't need to compile pysqlite3
-autobuild = ["chromadb", "sentence-transformers", "huggingface-hub", "pysqlite3-binary"]
-
-extra_require = {
-    "test": [
-        "ipykernel",
-        "nbconvert",
-        "nbformat",
-        "pre-commit",
-        "pytest-cov>=5",
-        "pytest-asyncio",
-        "pytest>=6.1.1,<8",
-        "pandas",
-    ],
-    "blendsearch": ["flaml[blendsearch]"],
-    "mathchat": ["sympy", "pydantic==1.10.9", "wolframalpha"],
-    "retrievechat": retrieve_chat,
-    "retrievechat-pgvector": retrieve_chat_pgvector,
-    "retrievechat-mongodb": [*retrieve_chat, "pymongo>=4.0.0"],
-    "retrievechat-qdrant": [*retrieve_chat, "qdrant_client", "fastembed>=0.3.1"],
-    "graph_rag_falkor_db": graph_rag_falkor_db,
-    "autobuild": autobuild,
-    "captainagent": autobuild + ["pandas"],
-    "teachable": ["chromadb"],
-    "lmm": ["replicate", "pillow"],
-    "graph": ["networkx", "matplotlib"],
-    "gemini": ["google-generativeai>=0.5,<1", "google-cloud-aiplatform", "google-auth", "pillow", "pydantic"],
-    "together": ["together>=1.2"],
-    "websurfer": ["beautifulsoup4", "markdownify", "pdfminer.six", "pathvalidate"],
-    "redis": ["redis"],
-    "cosmosdb": ["azure-cosmos>=4.2.0"],
-    "websockets": ["websockets>=12.0,<13"],
-    "jupyter-executor": jupyter_executor,
-    "types": ["mypy==1.9.0", "pytest>=6.1.1,<8"] + jupyter_executor,
-    "long-context": ["llmlingua<0.3"],
-    "anthropic": ["anthropic>=0.23.1"],
-    "cerebras": ["cerebras_cloud_sdk>=1.0.0"],
-    "mistral": ["mistralai>=1.0.1"],
-    "groq": ["groq>=0.9.0"],
-    "cohere": ["cohere>=5.5.8"],
-    "ollama": ["ollama>=0.3.3", "fix_busted_json>=0.0.18"],
-    "bedrock": ["boto3>=1.34.149"],
-}
-
 setuptools.setup(
-    name="seed-pyautogen",
+    name="autogen",
     version=__version__,
-    url="https://github.com/Seedtech-Club/ag2",
-    author="SeedTech",
-    author_email="kev1nzh37@gmail.com",
-    description="A programming framework for agentic AI",
+    description="Alias package for pyautogen",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_namespace_packages(
-        include=[
-            "autogen*",
-            "autogen.agentchat.contrib.captainagent.tools*",
-        ],
-        exclude=["test"],
-    ),
-    package_data={
-        "autogen.agentchat.contrib.captainagent": [
-            "tools/tool_description.tsv",
-            "tools/requirements.txt",
-        ]
+    install_requires=["pyautogen==" + __version__],
+    extras_require={
+        "test": ["pyautogen[test]==" + __version__],
+        "blendsearch": ["pyautogen[blendsearch]==" + __version__],
+        "mathchat": ["pyautogen[mathchat]==" + __version__],
+        "retrievechat": ["pyautogen[retrievechat]==" + __version__],
+        "retrievechat-pgvector": ["pyautogen[retrievechat-pgvector]==" + __version__],
+        "retrievechat-mongodb": ["pyautogen[retrievechat-mongodb]==" + __version__],
+        "retrievechat-qdrant": ["pyautogen[retrievechat-qdrant]==" + __version__],
+        "graph-rag-falkor-db": ["pyautogen[graph-rag-falkor-db]==" + __version__],
+        "autobuild": ["pyautogen[autobuild]==" + __version__],
+        "captainagent": ["pyautogen[captainagent]==" + __version__],
+        "teachable": ["pyautogen[teachable]==" + __version__],
+        "lmm": ["pyautogen[lmm]==" + __version__],
+        "graph": ["pyautogen[graph]==" + __version__],
+        "gemini": ["pyautogen[gemini]==" + __version__],
+        "together": ["pyautogen[together]==" + __version__],
+        "websurfer": ["pyautogen[websurfer]==" + __version__],
+        "redis": ["pyautogen[redis]==" + __version__],
+        "cosmosdb": ["pyautogen[cosmosdb]==" + __version__],
+        "websockets": ["pyautogen[websockets]==" + __version__],
+        "jupyter-executor": ["pyautogen[jupyter-executor]==" + __version__],
+        "types": ["pyautogen[types]==" + __version__],
+        "long-context": ["pyautogen[long-context]==" + __version__],
+        "anthropic": ["pyautogen[anthropic]==" + __version__],
+        "cerebras": ["pyautogen[cerebras]==" + __version__],
+        "mistral": ["pyautogen[mistral]==" + __version__],
+        "groq": ["pyautogen[groq]==" + __version__],
+        "cohere": ["pyautogen[cohere]==" + __version__],
+        "ollama": ["pyautogen[ollama]==" + __version__],
+        "bedrock": ["pyautogen[bedrock]==" + __version__],
+        "twilio": ["pyautogen[twilio]==" + __version__],
+        "interop-crewai": ["pyautogen[interop-crewai]==" + __version__],
+        "interop-langchain": ["pyautogen[interop-langchain]==" + __version__],
+        "interop-pydantic-ai": ["pyautogen[interop-pydantic-ai]==" + __version__],
+        "interop": ["pyautogen[interop]==" + __version__],
+        "neo4j": ["pyautogen[neo4j]==" + __version__],
     },
-    include_package_data=True,
-    install_requires=install_requires,
-    extras_require=extra_require,
+    url="https://github.com/ag2ai/ag2",
+    author="Chi Wang & Qingyun Wu",
+    author_email="support@ag2.ai",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
     license="Apache Software License 2.0",
-    python_requires=">=3.8,<3.14",
+    python_requires=">=3.9,<3.14",
 )
