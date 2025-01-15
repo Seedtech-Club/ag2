@@ -1547,7 +1547,21 @@ class ConversableAgent(LLMAgent):
             if len(code_blocks) == 0:
                 continue
 
-            iostream.send(GenerateCodeExecutionReplyMessage(code_blocks=code_blocks, sender=sender, recipient=self))
+            num_code_blocks = len(code_blocks)
+            if num_code_blocks == 1:
+                iostream.print(
+                    colored(
+                        f">>>>>>>> EXECUTING CODE BLOCK (inferred language is {code_blocks[0].language})...",
+                        "red",
+                    ),
+                    flush=True,
+                )
+            else:
+                for i, code_block in enumerate(code_blocks):
+                    iostream.print(
+                        colored(f">>>>>>>> EXECUTING CODE BLOCK {i + 1} (inferred language is {code_block.language})...", "red"),
+                        flush=True,
+                    )
 
             # found code blocks, execute code.
             code_result = self._code_executor.execute_code_blocks(code_blocks)
