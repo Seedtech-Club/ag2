@@ -780,7 +780,6 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
         recipient: "Agent",
     ):
         
-        self.code_blocks = code_blocks
         code_block_languages = [code_block.language for code_block in code_blocks]
 
         super().__init__(
@@ -788,6 +787,7 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
             code_block_languages=code_block_languages,
             sender_name=sender.name if sender else None,
             recipient_name=recipient.name,
+            code_blocks=code_blocks
         )
 
     def print(self, f: Optional[Callable[..., Any]] = None) -> None:
