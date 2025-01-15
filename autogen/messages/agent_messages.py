@@ -186,8 +186,6 @@ class ToolCallMessage(BasePrintReceivedMessage):
         for tool_call in self.tool_calls:
             tool_call.print(f)
 
-        f("\n", "-" * 80, flush=True, sep="")
-
 
 @wrap_message
 class TextMessage(BasePrintReceivedMessage):
@@ -627,7 +625,7 @@ class ExecuteFunctionMessage(BaseMessage):
 
         f(
             colored(
-                f">>>>>>>> PERFORMING OPERATION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}",
+                f">>>>>>>> PERFORMING OPERATION {self.func_name}...",
                 "magenta",
             ),
             flush=True,
@@ -666,7 +664,7 @@ class ExecutedFunctionMessage(BaseMessage):
 
         f(
             colored(
-                f">>>>>>>> EXECUTED OPERATION {self.func_name}...\nCall ID: {self.call_id}\nInput arguments: {self.arguments}\nOutput:\n{self.content}",
+                f">>>>>>>> EXECUTED OPERATION {self.func_name}...\nOutput:\n{self.content}",
                 "magenta",
             ),
             flush=True,
