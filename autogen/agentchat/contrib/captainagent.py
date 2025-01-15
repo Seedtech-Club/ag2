@@ -445,6 +445,11 @@ Collect information from the general task, follow the suggestions from manager t
                             tool_path = os.path.join(tool_root_dir, category, f"{tool_name}.py")
                             docstring = get_full_tool_description(tool_path)
                             docstrings.append(docstring)
+
+                        unique_docstrings = list(set(docstrings))
+                        if unique_docstrings:
+                            iostream.print("\n".join(unique_docstrings))
+                        
                         tool_builder.bind(agent_list[idx], "\n".join(docstrings))
                         # log tools
                         tool_history = self.tool_history.get(group_name, [])

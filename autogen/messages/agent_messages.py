@@ -72,7 +72,7 @@ class FunctionResponseMessage(BasePrintReceivedMessage):
         f(self.content, flush=True)
         f(colored("*" * len(func_print), "green"), flush=True)
 
-        f("\n", "-" * 80, flush=True, sep="")
+        f("-" * 80, flush=True, sep="")
 
 
 class ToolResponse(BaseModel):
@@ -101,7 +101,7 @@ class ToolResponseMessage(BasePrintReceivedMessage):
 
         for tool_response in self.tool_responses:
             tool_response.print(f)
-            f("\n", "-" * 80, flush=True, sep="")
+            f("-" * 80, flush=True, sep="")
 
 
 class FunctionCall(BaseModel):
@@ -139,7 +139,7 @@ class FunctionCallMessage(BasePrintReceivedMessage):
 
         self.function_call.print(f)
 
-        f("\n", "-" * 80, flush=True, sep="")
+        f("-" * 80, flush=True, sep="")
 
 
 class ToolCall(BaseModel):
@@ -198,7 +198,7 @@ class TextMessage(BasePrintReceivedMessage):
         if self.content is not None:
             f(content_str(self.content), flush=True)  # type: ignore [arg-type]
 
-        f("\n", "-" * 80, flush=True, sep="")
+        f("-" * 80, flush=True, sep="")
 
 
 def create_received_message_model(
@@ -777,7 +777,8 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
         sender: Optional["Agent"] = None,
         recipient: "Agent",
     ):
-        code_block_languages = [code_block.language for code_block in code_blocks]
+        code_block_languages = list(dict.fromkeys(code_block.language for code_block in code_blocks))
+
         super().__init__(
             uuid=uuid,
             code_block_languages=code_block_languages,
@@ -799,7 +800,8 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
                 flush=True,
             )
         else:
-            for i, language in enumerate(self.code_block_languages):
+            non_empty_languages = [language for language in self.code_block_languages if language]
+            for i, language in enumerate(non_empty_languages):
                 f(
                     colored(
                         f">>>>>>>> EXECUTING CODE BLOCK {i + 1} (inferred language is {language})...",

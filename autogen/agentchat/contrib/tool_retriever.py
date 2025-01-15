@@ -11,9 +11,6 @@ from .chroma_config import settings
 from autogen import AssistantAgent, UserProxyAgent
 from autogen.coding import LocalCommandLineCodeExecutor
 
-from ...io.base import IOStream
-
-
 class ToolBuilder:
     TOOL_USING_PROMPT = """# Functions
     You have access to the following functions. They can be accessed from the module called 'functions' by their function names.
@@ -65,8 +62,6 @@ For example, if there is a function called `foo` you could import it by writing 
 
 
     def retrieve(self, query: str, top_k: int = 5):
-        
-        iostream = IOStream.get_default()
 
         # Perform the query on the vector database
         results = self.vec_db.query(query_texts=[query], n_results=top_k)
@@ -79,21 +74,11 @@ For example, if there is a function called `foo` you could import it by writing 
             print("Error: Unexpected result format")
             documents = []
             distances = []
-        
 
         filtered_documents = []
         for document, distance in zip(documents, distances):
             if distance < 1.2:
                 filtered_documents.append(document)
-        
-        # Print the filtered results
-        if filtered_documents:
-            for document in filtered_documents:
-                iostream.print(f"==> Suitable tool available for '{query}'")
-                iostream.print(document)
-            iostream.print("\n", "-" * 80, flush=True, sep="")
-        else:
-            pass
 
         return filtered_documents
     

@@ -277,7 +277,6 @@ $functions"""
             if lang not in self.SUPPORTED_LANGUAGES:
                 # In case the language is not supported, we return an error message.
                 exitcode = 1
-                logs_all += "\n" + f"Skipped the execution of code block with language of [{lang}]"
 
             execute_code = self.execution_policies.get(lang, False)
             try:
