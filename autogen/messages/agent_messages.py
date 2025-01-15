@@ -766,7 +766,6 @@ class ClearConversableAgentHistoryWarningMessage(BaseMessage):
 @wrap_message
 class GenerateCodeExecutionReplyMessage(BaseMessage):
     code_block_languages: list[str]
-    code_blocks: list["CodeBlock"]
     sender_name: Optional[str] = None
     recipient_name: str
 
@@ -800,10 +799,10 @@ class GenerateCodeExecutionReplyMessage(BaseMessage):
                 flush=True,
             )
         else:
-            for i, code_block in enumerate(self.code_blocks):
+            for i, language in enumerate(self.code_block_languages):
                 f(
                     colored(
-                        f">>>>>>>> EXECUTING CODE BLOCK {i + 1} (inferred language is {code_block.language})...",
+                        f">>>>>>>> EXECUTING CODE BLOCK {i + 1} (inferred language is {language})...",
                         "red",
                     ),
                     flush=True,
