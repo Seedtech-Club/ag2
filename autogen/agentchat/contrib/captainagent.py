@@ -393,7 +393,7 @@ Collect information from the general task, follow the suggestions from manager t
         iostream = IOStream.get_default()
         iostream.print("\n==> Building Operation: \n", building_task, flush=True)
         iostream.print("==> Executing Operation: \n", execution_task, flush=True)
-        iostream.print("\n", "-" * 80, flush=True, sep="")
+        iostream.print("-" * 80, flush=True, sep="")
 
         builder = AgentBuilder(**self._nested_config["autobuild_init_config"])
         # if the group is already built, load from history
@@ -437,18 +437,19 @@ Collect information from the general task, follow the suggestions from manager t
                         corpus_path=os.path.join(tool_root_dir, "tool_description.tsv"),
                         retriever=self._nested_config["autobuild_tool_config"].get("retriever", "all-mpnet-base-v2"),
                     )
+                    
+                    tool_list = []
                     for idx, skill in enumerate(skills):
                         tools = tool_builder.retrieve(skill)
                         docstrings = []
+
+                        tool_list.extend(tools)
+
                         for tool in tools:
                             category, tool_name = tool.split(" ")[0], tool.split(" ")[1]
                             tool_path = os.path.join(tool_root_dir, category, f"{tool_name}.py")
                             docstring = get_full_tool_description(tool_path)
                             docstrings.append(docstring)
-
-                        unique_docstrings = list(set(docstrings))
-                        if unique_docstrings:
-                            iostream.print("\n".join(unique_docstrings))
                         
                         tool_builder.bind(agent_list[idx], "\n".join(docstrings))
                         # log tools
@@ -457,6 +458,10 @@ Collect information from the general task, follow the suggestions from manager t
                         self.tool_history[group_name] = tool_history
 
                     agent_list[-1] = tool_builder.bind_user_proxy(agent_list[-1], tool_root_dir)
+                
+                    unique_docstrings = list(set(tool_list))
+                    if unique_docstrings:
+                        iostream.print("\n".join(unique_docstrings))
 
             else:
                 # Build agents from scratch
