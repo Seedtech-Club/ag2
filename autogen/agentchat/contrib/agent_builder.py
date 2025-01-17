@@ -94,7 +94,7 @@ When the task is complete and the result has been carefully verified, after obta
 - If missing python packages, you can install the package by suggesting a `pip install` code in the ```sh ... ``` block.
 - Use existing function tools first. Only write custom functions if none are available.
 - **When calling a function tool within a code block, you must include 'from functions import selected_tool', replacing selected_tool with the tool you want to use**.
-- **Ensure each code block includes all necessary imports and functions**.
+- **Ensure your response contains no more than one code block, and that each code block includes all necessary imports and functions**.
 - Always use plt.savefig() instead of plt.show() to save your graphs.
 - Do not execute code blocks yourself. Only suggest code block that’s meant to be executed by Computer_terminal.
 - **Use 'print' function for the output when relevant**.
