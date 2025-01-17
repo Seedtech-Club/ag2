@@ -462,6 +462,7 @@ Collect information from the general task, follow the suggestions from manager t
                     unique_docstrings = list(set(tool_list))
                     if unique_docstrings:
                         iostream.print("\n".join(unique_docstrings))
+                    iostream.print("-" * 80, flush=True, sep="")
 
             else:
                 # Build agents from scratch
