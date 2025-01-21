@@ -498,7 +498,9 @@ Collect information from the general task, follow the suggestions from manager t
         graph_rag_capability = FalkorGraphRagCapability(query_engine)
         graph_rag_capability.add_to_agent(agent_list)
 
-        vision_capability = VisionCapability(lmm_config={"config_list": group_chat_llm_config, "temperature": 0.5})
+        vision_capability = VisionCapability(
+            lmm_config={**self._nested_config["group_chat_llm_config"], "temperature": 0.5}
+        )
 
         manager = autogen.GroupChatManager(
             groupchat=nested_group_chat,
