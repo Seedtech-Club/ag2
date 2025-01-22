@@ -123,7 +123,6 @@ class VisionCapability(AgentCapability):
                 }
                 response = requests.get(url, allow_redirects=True, headers=headers)
                 content_type = response.headers.get("Content-Type", "")
-                print("content_type: ", content_type)
                 if "image" in content_type:
                     return True
                 return False
