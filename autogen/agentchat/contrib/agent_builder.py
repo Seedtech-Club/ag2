@@ -225,7 +225,7 @@ Match roles in the role set to each expert in expert set.
         self.agent_configs: list[dict] = []
         self.open_ports: list[str] = []
         self.agent_procs: dict[str, tuple[sp.Popen, str]] = {}
-        self.agent_procs_assign: dict[str, tuple[autogen.ConversableAgent, str]] = {}
+        self.agent_procs_assign: dict[str, tuple[autogen.MultimodalConversableAgent, str]] = {}
         self.cached_configs: dict = {}
 
         self.max_agents = max_agents
@@ -311,7 +311,7 @@ Match roles in the role set to each expert in expert set.
                 module_path, model_class_name = agent_path.replace("/", ".").rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 model_class = getattr(module, model_class_name)
-                if not issubclass(model_class, autogen.ConversableAgent):
+                if not issubclass(model_class, autogen.MultimodalConversableAgent):
                     logger.error(f"{model_class} is not a ConversableAgent. Use AssistantAgent as default")
                     model_class = autogen.AssistantAgent
 
@@ -375,7 +375,7 @@ Match roles in the role set to each expert in expert set.
         user_proxy: Optional[autogen.ConversableAgent] = None,
         max_agents: Optional[int] = None,
         **kwargs,
-    ) -> tuple[list[autogen.ConversableAgent], dict]:
+    ) -> tuple[list[autogen.MultimodalConversableAgent], dict]:
         """
         Auto build agents based on the building task.
 
@@ -502,7 +502,7 @@ Match roles in the role set to each expert in expert set.
         use_oai_assistant: Optional[bool] = False,
         user_proxy: Optional[autogen.ConversableAgent] = None,
         **kwargs,
-    ) -> tuple[list[autogen.ConversableAgent], dict]:
+    ) -> tuple[list[autogen.MultimodalConversableAgent], dict]:
         """
         Build agents from a library.
         The library is a list of agent configs, which contains the name and system_message for each agent.
@@ -657,7 +657,7 @@ Match roles in the role set to each expert in expert set.
 
     def _build_agents(
         self, use_oai_assistant: Optional[bool] = False, user_proxy: Optional[autogen.ConversableAgent] = None, **kwargs
-    ) -> tuple[list[autogen.ConversableAgent], dict]:
+    ) -> tuple[list[autogen.MultimodalConversableAgent], dict]:
         """
         Build agents with generated configs.
 
@@ -722,7 +722,7 @@ Match roles in the role set to each expert in expert set.
         config_json: Optional[str] = None,
         use_oai_assistant: Optional[bool] = False,
         **kwargs,
-    ) -> tuple[list[autogen.ConversableAgent], dict]:
+    ) -> tuple[list[autogen.MultimodalConversableAgent], dict]:
         """
         Load building configs and call the build function to complete building without calling online LLMs' api.
 
