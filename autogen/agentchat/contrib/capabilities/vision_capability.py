@@ -88,6 +88,7 @@ class VisionCapability(AgentCapability):
         self._lmm_config = lmm_config
         self._description_prompt = description_prompt
         self._parent_agent = None
+        self._check_image_maps = {}
 
         if lmm_config:
             self._lmm_client = OpenAIWrapper(**lmm_config)
@@ -107,13 +108,15 @@ class VisionCapability(AgentCapability):
 
         # Register a hook for processing the last message.
         agent.register_hook(hookable_method="process_last_received_message", hook=self.process_last_received_message)
-    
+
     def process_content(self, content):
         def is_image(url):
+            if url in self._check_image_maps:
+                content_type = self._check_image_maps[url]
+                return "image" in content_type
+
             if os.path.exists(url):
-                return url.lower().endswith(
-                    (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")
-                )
+                return url.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"))
 
             if url.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")):
                 return True
@@ -121,9 +124,9 @@ class VisionCapability(AgentCapability):
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
                 }
-                response = requests.get(url, allow_redirects=True, headers=headers)
+                response = requests.head(url, allow_redirects=True, headers=headers)
                 content_type = response.headers.get("Content-Type", "")
-                print("content_type: ", content_type)
+                self._check_image_maps[url] = content_type
                 if "image" in content_type:
                     return True
                 return False
