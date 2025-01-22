@@ -5,6 +5,9 @@
 # Portions derived from  https://github.com/microsoft/autogen are under the MIT License.
 # SPDX-License-Identifier: MIT
 import copy
+import re
+import requests
+import os
 from typing import Callable, Dict, List, Optional, Union
 
 from autogen.agentchat.assistant_agent import ConversableAgent
@@ -104,6 +107,42 @@ class VisionCapability(AgentCapability):
 
         # Register a hook for processing the last message.
         agent.register_hook(hookable_method="process_last_received_message", hook=self.process_last_received_message)
+    
+    def process_content(self, content):
+        def is_image(url):
+            if os.path.exists(url):
+                return url.lower().endswith(
+                    (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")
+                )
+
+            if url.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")):
+                return True
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                }
+                response = requests.get(url, allow_redirects=True, headers=headers)
+                content_type = response.headers.get("Content-Type", "")
+                print("content_type: ", content_type)
+                if "image" in content_type:
+                    return True
+                return False
+            except requests.RequestException as e:
+                print(f"Error occurred while checking URL: {e}")
+                return False
+
+        def process_url(content):
+            pattern = r"(https?://[\w\-./?%&=]+|[a-zA-Z]:\\(?:[^\\/:*?\"<>|\r\n]+\\)*[^\\/:*?\"<>|\r\n]*|\b[\w\-.]+\.(jpg|jpeg|png|gif|bmp|webp)\b)"
+
+            def replacer(match):
+                url = match.group(0)
+                if is_image(url):
+                    return f"<img {url}>"
+                return url
+
+            return re.sub(pattern, replacer, content)
+
+        return process_url(content)
 
     def process_last_received_message(self, content: Union[str, list[dict]]) -> str:
         """
@@ -166,6 +205,7 @@ class VisionCapability(AgentCapability):
         # normalize the content into the gpt-4v format for multimodal
         # we want to keep the URL format to keep it concise.
         if isinstance(content, str):
+            content = self.process_content(content)
             content = gpt4v_formatter(content, img_format="url")
 
         aug_content: str = ""

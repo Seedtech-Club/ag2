@@ -313,7 +313,7 @@ Match roles in the role set to each expert in expert set.
                 module = importlib.import_module(module_path)
                 model_class = getattr(module, model_class_name)
                 if not issubclass(model_class, MultimodalConversableAgent):
-                    logger.error(f"{model_class} is not a ConversableAgent. Use AssistantAgent as default")
+                    logger.error(f"{model_class} is not a MultimodalConversableAgent. Use AssistantAgent as default")
                     model_class = autogen.AssistantAgent
 
             additional_config = {
